@@ -1,6 +1,7 @@
 "use server";
 
 import { fail, ok, type ActionResult } from "@/lib/action-result";
+import { appConfig } from "@/lib/config";
 import { writeAuditLog } from "@/lib/db";
 import { getErrorMessage, logError } from "@/lib/errors";
 import { requirePermission } from "@/lib/session";
@@ -14,8 +15,7 @@ export async function inviteUserAction(input: unknown): Promise<ActionResult<str
   try {
     const data = inviteUserSchema.parse(input);
     const session = await requirePermission("users.write");
-    if (data.role === "owner") return fail("Ownership cannot be transferred this way.");
-    const origin = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+    const origin = process.env.NEXT_PUBLIC_APP_URL ?? appConfig.appUrl;
     const admin = createAdminClient();
     const { data: invited, error } = await admin.auth.admin.inviteUserByEmail(data.email, {
       redirectTo: `${origin}/auth/callback?next=/dashboard`,

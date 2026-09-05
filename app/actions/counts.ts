@@ -54,6 +54,7 @@ export async function startCountAction(warehouseId: string): Promise<ActionResul
     }
 
     revalidatePath("/counts");
+    revalidatePath(`/counts/${count.id}`);
     return ok(count.id);
   } catch (error) {
     logError("start-count", error);

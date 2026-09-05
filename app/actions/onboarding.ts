@@ -3,6 +3,7 @@
 import { fail, ok, type ActionResult } from "@/lib/action-result";
 import { getErrorMessage, logError } from "@/lib/errors";
 import { requireSession } from "@/lib/session";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import {
   categorySchema,
@@ -26,6 +27,16 @@ export async function createBusinessAction(input: unknown): Promise<ActionResult
       .eq("id", session.userId)
       .maybeSingle();
     if (existing?.business_id) return ok({ businessId: existing.business_id });
+
+    try {
+      const admin = createAdminClient();
+      const { count } = await admin.from("businesses").select("id", { count: "exact", head: true });
+      if ((count ?? 0) > 0) {
+        return fail("This company already has an account. Ask an administrator to add you.");
+      }
+    } catch {
+      // Service role is optional locally; continue with first-time setup.
+    }
 
     const { data: business, error } = await supabase
       .from("businesses")

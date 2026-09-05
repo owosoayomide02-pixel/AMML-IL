@@ -1,6 +1,7 @@
 "use server";
 
 import { fail, ok, type ActionResult } from "@/lib/action-result";
+import { syncStockAlerts } from "@/lib/alerts";
 import { writeAuditLog, mapDbError } from "@/lib/db";
 import { getErrorMessage, logError } from "@/lib/errors";
 import { requirePermission } from "@/lib/session";
@@ -186,6 +187,13 @@ export async function createProductAction(input: unknown): Promise<ActionResult<
     if (error || !row) {
       return fail(mapDbError(error?.message ?? "") ?? "Unable to create product.");
     }
+    await recordPriceHistory(supabase, {
+      businessId: session.businessId,
+      productId: row.id,
+      costPrice: data.costPrice,
+      sellingPrice: data.sellingPrice,
+      userId: session.userId,
+    });
     await writeAuditLog(supabase, {
       businessId: session.businessId,
       userId: session.userId,
@@ -194,7 +202,10 @@ export async function createProductAction(input: unknown): Promise<ActionResult<
       entityId: row.id,
       newValues: { ...data, sku },
     });
+    await syncStockAlerts(session.businessId);
     revalidatePath("/products");
+    revalidatePath("/alerts");
+    revalidatePath("/dashboard");
     return ok(row.id);
   } catch (error) {
     logError("create-product", error);
@@ -234,6 +245,17 @@ export async function updateProductAction(id: string, input: unknown): Promise<A
       .eq("id", id)
       .eq("business_id", session.businessId);
     if (error) return fail(mapDbError(error.message) ?? "Unable to update product.");
+    const costChanged = Number(previous?.cost_price) !== data.costPrice;
+    const sellChanged = Number(previous?.selling_price) !== data.sellingPrice;
+    if (costChanged || sellChanged) {
+      await recordPriceHistory(supabase, {
+        businessId: session.businessId,
+        productId: id,
+        costPrice: data.costPrice,
+        sellingPrice: data.sellingPrice,
+        userId: session.userId,
+      });
+    }
     await writeAuditLog(supabase, {
       businessId: session.businessId,
       userId: session.userId,
@@ -300,6 +322,20 @@ export async function restoreProductAction(id: string): Promise<ActionResult<str
     logError("restore-product", error);
     return fail(getErrorMessage(error, "Unable to restore product."));
   }
+}
+
+async function recordPriceHistory(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  input: { businessId: string; productId: string; costPrice: number; sellingPrice: number; userId: string },
+) {
+  const { error } = await supabase.from("product_price_history").insert({
+    business_id: input.businessId,
+    product_id: input.productId,
+    cost_price: input.costPrice,
+    selling_price: input.sellingPrice,
+    changed_by: input.userId,
+  });
+  if (error) logError("price-history", error);
 }
 
 export async function lookupProductByBarcodeAction(barcode: string) {

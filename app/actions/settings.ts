@@ -65,6 +65,7 @@ export async function updateInventorySettingsAction(input: unknown): Promise<Act
     await upsertSetting(supabase, session.businessId, "default_unit", { value: data.defaultUnit });
     await upsertSetting(supabase, session.businessId, "sku_format", { prefix: data.skuPrefix });
     await upsertSetting(supabase, session.businessId, "low_stock_alerts", { enabled: data.lowStockAlerts });
+    await upsertSetting(supabase, session.businessId, "usd_ngn_rate", { rate: data.usdNgnRate });
     await writeAuditLog(supabase, {
       businessId: session.businessId,
       userId: session.userId,

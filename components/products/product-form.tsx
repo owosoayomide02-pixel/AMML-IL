@@ -3,8 +3,10 @@
 import { createProductAction, updateProductAction } from "@/app/actions/catalog";
 import { Button } from "@/components/ui/button";
 import { FieldError, FormGrid } from "@/components/ui/form";
+import { DualPriceInput } from "@/components/ui/dual-price-input";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { DEFAULT_USD_NGN_RATE } from "@/lib/money";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { appConfig } from "@/lib/config";
@@ -19,8 +21,10 @@ export function ProductForm({
   categories,
   defaultValues,
   productId,
+  usdNgnRate = DEFAULT_USD_NGN_RATE,
 }: {
   categories: Array<{ id: string; name: string }>;
+  usdNgnRate?: number;
   defaultValues?: Partial<{
     name: string;
     sku: string;
@@ -114,13 +118,23 @@ export function ProductForm({
           <Input {...form.register("manufacturer")} />
         </div>
         <div>
-          <Label>Cost price</Label>
-          <Input type="number" step="0.01" {...form.register("costPrice")} />
+          <DualPriceInput
+            label="Cost price"
+            name="costPrice"
+            naira={Number(form.watch("costPrice") || 0)}
+            onNairaChange={(value) => form.setValue("costPrice", value, { shouldValidate: true })}
+            rate={usdNgnRate}
+          />
           <FieldError message={form.formState.errors.costPrice?.message} />
         </div>
         <div>
-          <Label>Selling price</Label>
-          <Input type="number" step="0.01" {...form.register("sellingPrice")} />
+          <DualPriceInput
+            label="Selling price"
+            name="sellingPrice"
+            naira={Number(form.watch("sellingPrice") || 0)}
+            onNairaChange={(value) => form.setValue("sellingPrice", value, { shouldValidate: true })}
+            rate={usdNgnRate}
+          />
         </div>
         <div>
           <Label>Minimum stock level</Label>

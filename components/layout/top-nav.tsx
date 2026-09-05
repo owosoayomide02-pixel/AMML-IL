@@ -1,5 +1,6 @@
 "use client";
 
+import { AskAiDrawer } from "@/components/ai/ask-ai-drawer";
 import { GlobalSearch } from "@/components/layout/global-search";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { UserMenu } from "@/components/layout/user-menu";
@@ -24,6 +25,7 @@ export function TopNav({
       <div className="flex-1">
         <GlobalSearch />
       </div>
+      <AskAiDrawer />
       <Link
         href="/alerts"
         className="relative rounded-lg p-2 hover:bg-slate-100 dark:hover:bg-slate-800"

@@ -14,11 +14,26 @@ export async function getSessionContext(): Promise<SessionContext | null> {
 
   if (!user) return null;
 
-  const { data: profile } = await supabase
+  let { data: profile } = await supabase
     .from("profiles")
     .select("*")
     .eq("id", user.id)
     .maybeSingle();
+
+  if (!profile) {
+    const { data: created } = await supabase
+      .from("profiles")
+      .upsert({
+        id: user.id,
+        email: user.email ?? "",
+        full_name: (user.user_metadata?.full_name as string | undefined) ?? "",
+        role: "owner",
+        status: "active",
+      })
+      .select("*")
+      .maybeSingle();
+    profile = created;
+  }
 
   if (!profile) return null;
 
@@ -43,7 +58,16 @@ export async function getSessionContext(): Promise<SessionContext | null> {
 
 export async function requireSession() {
   const session = await getSessionContext();
-  if (!session) redirect("/login");
+  if (!session) {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (user) {
+      await supabase.auth.signOut();
+    }
+    redirect("/login");
+  }
   return session;
 }
 
@@ -53,6 +77,8 @@ export async function requireBusiness() {
     redirect("/onboarding");
   }
   if (session.profile.status === "disabled") {
+    const supabase = await createClient();
+    await supabase.auth.signOut();
     redirect("/login?error=disabled");
   }
   return {

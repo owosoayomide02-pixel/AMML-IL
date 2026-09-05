@@ -273,6 +273,16 @@ export interface InventoryCountItem {
   created_at: string;
 }
 
+export interface ProductPriceHistory {
+  id: string;
+  business_id: string;
+  product_id: string;
+  cost_price: number;
+  selling_price: number;
+  changed_by: string | null;
+  created_at: string;
+}
+
 export interface Alert {
   id: string;
   business_id: string;
@@ -296,6 +306,12 @@ export interface AuditLog {
   new_values: Json | null;
   ip_address: string | null;
   created_at: string;
+}
+
+export interface TelegramChat {
+  id: string;
+  name: string;
+  type: string;
 }
 
 export interface Setting {

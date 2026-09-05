@@ -3,15 +3,21 @@
  * Rename the product from this file — UI, metadata, emails, and SKU defaults read from here.
  */
 export const appConfig = {
-  name: "Inventory Pro",
-  slug: "inventory-pro",
+  name: "All Automation Modules",
+  shortName: "AAML",
+  displayName: "AAML Automation",
+  slug: "aaml-inventory",
+  slogan: "Makes Life Smart",
+  tagline: "Staff inventory for All Automation Modules.",
   description:
-    "Professional inventory management for products, stock, sales, purchases, warehouses, and reports.",
-  supportEmail: "support@inventorypro.app",
-  defaultCurrency: "USD",
-  defaultCountry: "United States",
+    "Inventory workspace for All Automation Modules — track automation spares, stock, sales, purchases, and warehouses.",
+  website: "https://www.allautomationmodules.com",
+  appUrl: "https://inventory.allautomationmodules.com",
+  supportEmail: "contact@allautomationmodules.com",
+  defaultCurrency: "NGN",
+  defaultCountry: "Nigeria",
   defaultUnit: "pcs",
-  skuPrefix: "SKU",
+  skuPrefix: "AAML",
   invoicePrefix: "INV",
   purchasePrefix: "PO",
   transferPrefix: "TR",

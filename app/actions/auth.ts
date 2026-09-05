@@ -4,7 +4,7 @@ import { fail, ok, type ActionResult } from "@/lib/action-result";
 import { appConfig } from "@/lib/config";
 import { getErrorMessage, logError } from "@/lib/errors";
 import { createClient } from "@/lib/supabase/server";
-import { forgotPasswordSchema, loginSchema, registerSchema, resetPasswordSchema } from "@/schemas";
+import { forgotPasswordSchema, loginSchema, resetPasswordSchema } from "@/schemas";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
@@ -46,40 +46,11 @@ export async function loginAction(input: unknown): Promise<ActionResult<{ redire
   }
 }
 
-export async function registerAction(input: unknown): Promise<ActionResult<{ redirectTo: string }>> {
-  try {
-    const data = registerSchema.parse(input);
-    const supabase = await createClient();
-    const origin = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-    const { error } = await supabase.auth.signUp({
-      email: data.email,
-      password: data.password,
-      options: {
-        emailRedirectTo: `${origin}/auth/callback`,
-        data: {
-          full_name: data.fullName,
-          role: "owner",
-        },
-      },
-    });
-    if (error) {
-      if (/already registered/i.test(error.message)) {
-        return fail("An account with this email already exists.");
-      }
-      return fail("Unable to create your account. Please try again.");
-    }
-    return ok({ redirectTo: "/verify-email" });
-  } catch (error) {
-    logError("register", error);
-    return fail(getErrorMessage(error, "Unable to create your account."));
-  }
-}
-
 export async function forgotPasswordAction(input: unknown): Promise<ActionResult<{ message: string }>> {
   try {
     const data = forgotPasswordSchema.parse(input);
     const supabase = await createClient();
-    const origin = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+    const origin = process.env.NEXT_PUBLIC_APP_URL ?? appConfig.appUrl;
     const { error } = await supabase.auth.resetPasswordForEmail(data.email, {
       redirectTo: `${origin}/auth/callback?next=/reset-password`,
     });

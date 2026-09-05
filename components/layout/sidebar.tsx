@@ -1,11 +1,11 @@
 "use client";
 
-import { appConfig } from "@/lib/config";
+import { BrandLockup } from "@/components/brand/logo";
 import { can, type Permission } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
 import { navigation } from "@/lib/navigation";
 import type { Role } from "@/types";
-import { Boxes, X } from "lucide-react";
+import { X } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -29,11 +29,8 @@ export function Sidebar({
       )}
     >
       <div className="flex h-16 items-center justify-between px-5">
-        <Link href="/dashboard" className="flex items-center gap-2 font-semibold">
-          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-600 text-white">
-            <Boxes className="h-5 w-5" />
-          </span>
-          <span>{appConfig.name}</span>
+        <Link href="/dashboard" className="min-w-0">
+          <BrandLockup compact />
         </Link>
         <button className="rounded-lg p-1 lg:hidden" onClick={onClose}>
           <X className="h-5 w-5" />

@@ -8,7 +8,7 @@ export function cn(...inputs: ClassValue[]) {
 
 export function formatCurrency(
   amount: number | string | null | undefined,
-  currency = appConfig.defaultCurrency,
+  currency: string = appConfig.defaultCurrency,
   locale = "en-US",
 ) {
   const value = Number(amount ?? 0);

@@ -239,6 +239,7 @@ export const inventorySettingsSchema = z.object({
   defaultUnit: z.string().min(1),
   skuPrefix: z.string().min(1),
   lowStockAlerts: z.boolean(),
+  usdNgnRate: z.coerce.number().min(1, "Enter naira per 1 US dollar"),
 });
 
 export const salesSettingsSchema = z.object({

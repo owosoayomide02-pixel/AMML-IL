@@ -237,11 +237,11 @@ export function OnboardingFlow({
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
               <Label>Cost price</Label>
-              <Input name="costPrice" type="number" step="0.01" defaultValue="0" />
+              <Input name="costPrice" type="number" step="5000" min="0" defaultValue="0" />
             </div>
             <div>
               <Label>Selling price</Label>
-              <Input name="sellingPrice" type="number" step="0.01" defaultValue="0" />
+              <Input name="sellingPrice" type="number" step="5000" min="0" defaultValue="0" />
             </div>
             <div>
               <Label>Minimum stock</Label>

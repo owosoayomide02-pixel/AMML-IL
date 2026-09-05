@@ -28,6 +28,13 @@ yarn-error.log*
 .env
 .env*.local
 
+# supabase CLI local state
+supabase/.temp/
+
+# local screenshots / source art
+/Screenshot *.jpg
+/logo for comp.jpg
+
 # vercel
 .vercel
 

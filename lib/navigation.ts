@@ -8,6 +8,7 @@ import {
   FileText,
   LayoutDashboard,
   Package,
+  PackagePlus,
   Settings,
   ShoppingCart,
   Truck,
@@ -42,12 +43,13 @@ export const navigation: NavSection[] = [
     title: "Inventory",
     items: [
       { href: "/products", label: "Products", icon: Package, permission: "products.read" },
+      { href: "/products/import", label: "Bulk add stock", icon: PackagePlus, permission: "products.write" },
       { href: "/categories", label: "Categories", icon: Tags, permission: "categories.read" },
       { href: "/inventory", label: "Stock Overview", icon: Boxes, permission: "inventory.read" },
       { href: "/stock/in", label: "Stock In", icon: ArrowDownToLine, permission: "stock.in" },
       { href: "/stock/out", label: "Stock Out", icon: ArrowUpFromLine, permission: "stock.out" },
       { href: "/transfers", label: "Transfers", icon: ArrowLeftRight, permission: "transfers.read" },
-      { href: "/counts", label: "Stock Count", icon: ClipboardList, permission: "counts.read" },
+      { href: "/counts", label: "Stock counts", icon: ClipboardList, permission: "counts.read" },
     ],
   },
   {
