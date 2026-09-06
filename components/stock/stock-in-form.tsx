@@ -1,6 +1,7 @@
 "use client";
 
 import { stockInAction } from "@/app/actions/stock";
+import { BarcodeLookup } from "@/components/barcode/barcode-lookup";
 import { Button } from "@/components/ui/button";
 import { FieldError, FormGrid } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -56,14 +57,23 @@ export function StockInForm({
       <FormGrid>
         <div>
           <Label>Product</Label>
-          <Select {...form.register("productId")}>
-            <option value="">Select product</option>
-            {products.map((product) => (
-              <option key={product.id} value={product.id}>
-                {product.name} ({product.sku})
-              </option>
-            ))}
-          </Select>
+          <div className="flex gap-2">
+            <Select className="flex-1" {...form.register("productId")}>
+              <option value="">Select product</option>
+              {products.map((product) => (
+                <option key={product.id} value={product.id}>
+                  {product.name} ({product.sku})
+                </option>
+              ))}
+            </Select>
+            <BarcodeLookup
+              compact
+              onFound={(product) => {
+                form.setValue("productId", product.id, { shouldValidate: true });
+                if (product.cost_price) form.setValue("unitCost", product.cost_price);
+              }}
+            />
+          </div>
           <FieldError message={form.formState.errors.productId?.message} />
         </div>
         <div>

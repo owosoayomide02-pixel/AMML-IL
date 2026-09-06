@@ -1,3 +1,4 @@
+import { ProductBarcodeFinder } from "@/components/products/product-barcode-finder";
 import { ExportButtons } from "@/components/export/export-buttons";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -35,6 +36,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
         actions={
           <>
             <SearchField placeholder="Search name, SKU, or barcode" />
+            <ProductBarcodeFinder />
             <ExportButtons
               filename="products"
               rows={products.map((product) => ({

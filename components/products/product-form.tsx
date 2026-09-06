@@ -1,6 +1,7 @@
 "use client";
 
 import { createProductAction, updateProductAction } from "@/app/actions/catalog";
+import { BarcodeLookup } from "@/components/barcode/barcode-lookup";
 import { Button } from "@/components/ui/button";
 import { FieldError, FormGrid } from "@/components/ui/form";
 import { DualPriceInput } from "@/components/ui/dual-price-input";
@@ -92,7 +93,20 @@ export function ProductForm({
         </div>
         <div>
           <Label>Barcode</Label>
-          <Input {...form.register("barcode")} />
+          <div className="flex gap-2">
+            <Input {...form.register("barcode")} placeholder="Type or scan" />
+            <BarcodeLookup
+              compact
+              onCode={(code) => form.setValue("barcode", code, { shouldDirty: true })}
+              onFound={(product) => {
+                if (productId && product.id !== productId) {
+                  toast.error(`${product.name} already uses this barcode.`);
+                  return;
+                }
+                form.setValue("barcode", product.barcode || product.sku, { shouldDirty: true });
+              }}
+            />
+          </div>
         </div>
         <div>
           <Label>Category</Label>

@@ -356,11 +356,21 @@ async function recordPriceHistory(
 export async function lookupProductByBarcodeAction(barcode: string) {
   const session = await requirePermission("products.read");
   const supabase = await createClient();
+  const code = barcode.trim();
+  if (!code) return null;
+  const columns = "id, name, sku, barcode, selling_price, cost_price, unit, status";
   const { data } = await supabase
     .from("products")
-    .select("id, name, sku, barcode, selling_price, cost_price, unit, status")
+    .select(columns)
     .eq("business_id", session.businessId)
-    .eq("barcode", barcode.trim())
+    .eq("barcode", code)
     .maybeSingle();
-  return data;
+  if (data) return data;
+  const { data: bySku } = await supabase
+    .from("products")
+    .select(columns)
+    .eq("business_id", session.businessId)
+    .eq("sku", code)
+    .maybeSingle();
+  return bySku;
 }

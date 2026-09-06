@@ -1,6 +1,7 @@
 "use client";
 
 import { createSaleAction } from "@/app/actions/sales";
+import { BarcodeLookup } from "@/components/barcode/barcode-lookup";
 import { Button } from "@/components/ui/button";
 import { FieldError, FormGrid } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -102,8 +103,29 @@ export function SaleForm({
       </FormGrid>
 
       <div className="space-y-3">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <h3 className="font-medium">Items</h3>
+          <div className="flex flex-wrap gap-2">
+            <BarcodeLookup
+              compact
+              onFound={(product) => {
+                const emptyIndex = values.items.findIndex((item) => !item.productId);
+                const line = {
+                  productId: product.id,
+                  warehouseId: warehouses[0]?.id ?? "",
+                  quantity: 1,
+                  sellingPrice: product.selling_price,
+                  tax: 0,
+                  discount: 0,
+                };
+                if (emptyIndex >= 0) {
+                  form.setValue(`items.${emptyIndex}.productId`, product.id);
+                  form.setValue(`items.${emptyIndex}.sellingPrice`, product.selling_price);
+                } else {
+                  items.append(line);
+                }
+              }}
+            />
           <Button
             type="button"
             variant="secondary"
@@ -121,6 +143,7 @@ export function SaleForm({
           >
             <Plus className="h-4 w-4" /> Add line
           </Button>
+          </div>
         </div>
         {items.fields.map((field, index) => (
           <div key={field.id} className="grid gap-3 rounded-xl border border-slate-200 p-3 md:grid-cols-6 dark:border-slate-800">
