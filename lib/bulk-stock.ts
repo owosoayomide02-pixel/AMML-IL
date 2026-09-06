@@ -45,9 +45,19 @@ function splitLine(line: string) {
   return [line.trim()];
 }
 
+const KNOWN_CATEGORIES = new Set(["automation", "switchgear", "sensors", "cables", "drives", "pneumatics", "general"]);
+
 function asNumber(value: string | undefined) {
   const n = Number(String(value ?? "").replace(/[^0-9.-]/g, ""));
   return Number.isFinite(n) ? n : 0;
+}
+
+function isPlainNumber(value: string) {
+  return /^[$₦]?[\d,]+(\.\d+)?$/.test(value.trim());
+}
+
+function looksLikeSku(value: string) {
+  return /^[A-Za-z0-9][A-Za-z0-9._-]{0,31}$/.test(value) && /[A-Za-z]/.test(value) && !KNOWN_CATEGORIES.has(value.toLowerCase());
 }
 
 function emptyItem(): BulkStockItem {
@@ -95,29 +105,45 @@ export function parseBulkStockText(raw: string): BulkStockItem[] {
     }).filter((item) => item.name);
   }
 
-  return lines
-    .map((line) => {
-      const cells = splitLine(line);
-      if (cells.length >= 2) {
-        return {
-          ...emptyItem(),
-          name: cells[0],
-          sku: cells[1] && /[a-z]/i.test(cells[1]) && !/^\d+(\.\d+)?$/.test(cells[1]) ? cells[1] : "",
-          quantity: asNumber(cells.find((cell, index) => index > 0 && /^\d+(\.\d+)?$/.test(cell))),
-          costPrice: asNumber(cells[cells.length - 2]),
-          sellingPrice: asNumber(cells[cells.length - 1]),
-          category: cells.length > 4 ? cells[2] : "",
-        };
-      }
-      const qtyMatch = line.match(/(\d+(?:\.\d+)?)\s*(?:pcs|units|qty)?\s*$/i);
-      const name = qtyMatch ? line.slice(0, qtyMatch.index).replace(/[,-]+$/, "").trim() : line;
-      return {
-        ...emptyItem(),
-        name,
-        quantity: qtyMatch ? asNumber(qtyMatch[1]) : 0,
-      };
-    })
-    .filter((item) => item.name);
+  return lines.map(parseHeaderlessLine).filter((item) => item.name);
+}
+
+function parseHeaderlessLine(line: string): BulkStockItem {
+  const cells = splitLine(line);
+  const item = emptyItem();
+  item.name = cells[0] ?? "";
+  if (cells.length < 2) return item;
+
+  const numbers: number[] = [];
+  for (const cell of cells.slice(1)) {
+    if (isPlainNumber(cell)) {
+      numbers.push(asNumber(cell));
+      continue;
+    }
+    if (KNOWN_CATEGORIES.has(cell.toLowerCase())) {
+      item.category = cell;
+      continue;
+    }
+    if (!item.sku && looksLikeSku(cell)) {
+      item.sku = cell;
+      continue;
+    }
+    if (!item.brand) item.brand = cell;
+  }
+
+  if (numbers.length === 1) {
+    item.quantity = numbers[0];
+  } else if (numbers.length === 2) {
+    item.quantity = numbers[0];
+    item.sellingPrice = numbers[1];
+  } else if (numbers.length >= 3) {
+    item.quantity = numbers[0];
+    item.costPrice = numbers[1];
+    item.sellingPrice = numbers[2];
+    if (numbers[3] != null) item.minimumStockLevel = numbers[3];
+  }
+
+  return item;
 }
 
 export function guessCategory(name: string) {

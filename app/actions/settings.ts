@@ -3,6 +3,9 @@
 import { fail, ok, type ActionResult } from "@/lib/action-result";
 import { upsertSetting, writeAuditLog } from "@/lib/db";
 import { getErrorMessage, logError } from "@/lib/errors";
+import { fetchLiveUsdNgnRate } from "@/lib/fx";
+import { alertFxRateChange } from "@/lib/price-alerts";
+import { getUsdNgnRate } from "@/lib/queries";
 import { requirePermission } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 import {
@@ -58,6 +61,7 @@ export async function updateInventorySettingsAction(input: unknown): Promise<Act
       return fail("Only the owner can enable negative inventory.");
     }
     const supabase = await createClient();
+    const previousRate = await getUsdNgnRate(session.businessId);
     await upsertSetting(supabase, session.businessId, "allow_negative_inventory", {
       enabled: data.allowNegativeInventory,
     });
@@ -66,6 +70,16 @@ export async function updateInventorySettingsAction(input: unknown): Promise<Act
     await upsertSetting(supabase, session.businessId, "sku_format", { prefix: data.skuPrefix });
     await upsertSetting(supabase, session.businessId, "low_stock_alerts", { enabled: data.lowStockAlerts });
     await upsertSetting(supabase, session.businessId, "usd_ngn_rate", { rate: data.usdNgnRate });
+    if (previousRate !== data.usdNgnRate) {
+      await alertFxRateChange({
+        businessId: session.businessId,
+        previousRate,
+        nextRate: data.usdNgnRate,
+        liveRate: await fetchLiveUsdNgnRate(),
+      });
+      revalidatePath("/alerts");
+      revalidatePath("/dashboard");
+    }
     await writeAuditLog(supabase, {
       businessId: session.businessId,
       userId: session.userId,

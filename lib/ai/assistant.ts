@@ -27,6 +27,18 @@ export type AssistantContext = {
     title?: string | null;
     severity?: string | null;
   }>;
+  fx?: {
+    companyUsdNgnRate?: number | null;
+    liveUsdNgnRate?: number | null;
+  };
+  recentPriceChanges?: Array<{
+    name?: string | null;
+    sku?: string | null;
+    field?: string | null;
+    direction?: string | null;
+    from?: number | null;
+    to?: number | null;
+  }>;
 };
 
 function lines(items: string[], empty: string) {
@@ -80,6 +92,27 @@ export function answerFromInventory(question: string, ctx: AssistantContext): st
     )}`;
   }
 
+  if (/dollar|naira|exchange|fx\b|usd|ngn|currency rate|dollar rate/.test(q)) {
+    const company = ctx.fx?.companyUsdNgnRate;
+    const live = ctx.fx?.liveUsdNgnRate;
+    return [
+      company ? `Company rate: 1 USD = ₦${company}.` : "The company USD/NGN rate is not set. Use Settings → Inventory.",
+      live ? `Live market rate: 1 USD = ₦${live}.` : "Live market rate is not available right now.",
+      "Product prices in this app are stored in naira. USD is converted with the company rate.",
+    ].join("\n");
+  }
+
+  if (/price change|increased|decreased|market price|went up|went down/.test(q)) {
+    const moves = ctx.recentPriceChanges ?? [];
+    return `Recent price moves (${moves.length}):\n${lines(
+      moves.map(
+        (row) =>
+          `${row.name} (${row.sku}) ${row.field} ${row.direction} from ${row.from} to ${row.to}`,
+      ),
+      "No recent cost or selling-price changes are on file.",
+    )}`;
+  }
+
   if (/margin|price|cheap|cost/.test(q)) {
     return `Thin-margin SKUs (under 10%):\n${lines(
       thin.map((product) => `${product.name} (${product.sku}) cost ${product.cost_price}, sell ${product.selling_price}`),
@@ -105,11 +138,13 @@ export function answerFromInventory(question: string, ctx: AssistantContext): st
     `• ${low.length} at or below minimum`,
     `• ${ctx.unreadAlerts.length} unread alerts`,
     `• ${ctx.recentSales.length} recent invoices`,
+    ctx.fx?.companyUsdNgnRate ? `• Company rate 1 USD = ₦${ctx.fx.companyUsdNgnRate}` : "",
+    ctx.fx?.liveUsdNgnRate ? `• Live market 1 USD = ₦${ctx.fx.liveUsdNgnRate}` : "",
     out.length || low.length
       ? `\nWatch list:\n${lines(
           [...out, ...low].map((row) => `${row.name} (${row.sku}): ${row.available} available`),
           "",
         )}`
       : "\nStock levels are at or above minimum.",
-  ].join("\n");
+  ].filter(Boolean).join("\n");
 }

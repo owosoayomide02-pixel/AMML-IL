@@ -4,6 +4,8 @@ import { fail, ok, type ActionResult } from "@/lib/action-result";
 import { syncStockAlerts } from "@/lib/alerts";
 import { writeAuditLog, mapDbError } from "@/lib/db";
 import { getErrorMessage, logError } from "@/lib/errors";
+import { alertProductPriceChange } from "@/lib/price-alerts";
+import { getUsdNgnRate } from "@/lib/queries";
 import { requirePermission } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 import { generateSku } from "@/lib/utils";
@@ -255,6 +257,19 @@ export async function updateProductAction(id: string, input: unknown): Promise<A
         sellingPrice: data.sellingPrice,
         userId: session.userId,
       });
+      await alertProductPriceChange({
+        businessId: session.businessId,
+        productId: id,
+        name: data.name || previous?.name || "Product",
+        sku: sku || previous?.sku || "",
+        previousCost: Number(previous?.cost_price ?? 0),
+        previousSell: Number(previous?.selling_price ?? 0),
+        nextCost: data.costPrice,
+        nextSell: data.sellingPrice,
+        usdNgnRate: await getUsdNgnRate(session.businessId),
+      });
+      revalidatePath("/alerts");
+      revalidatePath("/dashboard");
     }
     await writeAuditLog(supabase, {
       businessId: session.businessId,

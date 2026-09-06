@@ -2,12 +2,14 @@
 
 import { fail, ok, type ActionResult } from "@/lib/action-result";
 import { answerFromInventory } from "@/lib/ai/assistant";
-import { completeJson, completeText, isAiConfigured } from "@/lib/ai/client";
+import { completeChat, completeJson, completeText, isAiConfigured, type ChatTurn } from "@/lib/ai/client";
 import { analyzePrice, buildDemandForecast, buildReorderAdvice } from "@/lib/ai/rules";
 import { syncStockAlerts } from "@/lib/alerts";
+import { fetchLiveUsdNgnRate } from "@/lib/fx";
+import { formatNgnUsd } from "@/lib/money";
 import { notifyTelegram } from "@/lib/telegram";
 import { getErrorMessage, logError } from "@/lib/errors";
-import { listInventory, listPriceHistory } from "@/lib/queries";
+import { getUsdNgnRate, listInventory, listPriceHistory } from "@/lib/queries";
 import { requireBusiness, requirePermission } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 import { toNumber } from "@/lib/utils";
@@ -203,19 +205,29 @@ export async function scanAnomaliesAction(): Promise<ActionResult<{ created: num
       if (toNumber(row.selling_price) === latest.selling && toNumber(row.cost_price) === latest.cost) continue;
       previousByProduct.set(row.product_id, { selling: toNumber(row.selling_price), cost: toNumber(row.cost_price) });
     }
+    const usdNgnRate = await getUsdNgnRate(session.businessId);
     for (const [productId, latest] of latestByProduct) {
       const previous = previousByProduct.get(productId);
-      if (!previous || previous.selling === 0) continue;
-      const change = Math.abs(latest.selling - previous.selling) / previous.selling;
-      if (change >= 0.2) {
-        findings.push({
-          type: "price_jump",
-          title: `Price jump on ${latest.name}`,
-          message: `Selling price moved from ${previous.selling} to ${latest.selling}.`,
-          severity: "warning",
-          productId,
-        });
-      }
+      if (!previous) continue;
+      const sellChanged = latest.selling !== previous.selling;
+      const costChanged = latest.cost !== previous.cost;
+      if (!sellChanged && !costChanged) continue;
+      const rose = latest.selling > previous.selling || latest.cost > previous.cost;
+      const parts = [
+        sellChanged
+          ? `Selling ${latest.selling > previous.selling ? "increased" : "decreased"} from ${formatNgnUsd(previous.selling, usdNgnRate)} to ${formatNgnUsd(latest.selling, usdNgnRate)}`
+          : null,
+        costChanged
+          ? `Cost ${latest.cost > previous.cost ? "increased" : "decreased"} from ${formatNgnUsd(previous.cost, usdNgnRate)} to ${formatNgnUsd(latest.cost, usdNgnRate)}`
+          : null,
+      ].filter(Boolean);
+      findings.push({
+        type: rose ? "price_increase" : "price_decrease",
+        title: `${rose ? "Price increase" : "Price decrease"} on ${latest.name}`,
+        message: `${parts.join(". ")}. Company rate 1 USD = ₦${usdNgnRate}.`,
+        severity: rose ? "warning" : "info",
+        productId,
+      });
     }
 
     if (isAiConfigured() && findings.length > 0) {
@@ -265,24 +277,96 @@ export async function scanAnomaliesAction(): Promise<ActionResult<{ created: num
   }
 }
 
-export async function askAiAction(question: string): Promise<ActionResult<string>> {
+export async function getAskAiMetaAction() {
+  try {
+    const session = await requireBusiness();
+    const [companyUsdNgnRate, liveUsdNgnRate] = await Promise.all([getUsdNgnRate(session.businessId), fetchLiveUsdNgnRate()]);
+    return ok({
+      configured: isAiConfigured(),
+      currency: session.business.currency,
+      companyUsdNgnRate,
+      liveUsdNgnRate,
+    });
+  } catch (error) {
+    logError("ask-ai-meta", error);
+    return fail(getErrorMessage(error, "Unable to open Ask AI."));
+  }
+}
+
+export async function askAiAction(
+  question: string,
+  history: ChatTurn[] = [],
+): Promise<ActionResult<string>> {
   try {
     const session = await requireBusiness();
     const q = question.trim();
-    if (q.length < 3) return fail("Ask a more specific question.");
+    if (q.length < 2) return fail("Type a question about stock, prices, or the dollar rate.");
 
     const supabase = await createClient();
-    const [products, inventory, sales, alerts] = await Promise.all([
-      supabase.from("products").select("id, name, sku, cost_price, selling_price, minimum_stock_level, status").eq("business_id", session.businessId).eq("status", "active").limit(80),
+    const [products, inventory, sales, alerts, historyRows, companyUsdNgnRate, liveUsdNgnRate] = await Promise.all([
+      supabase.from("products").select("id, name, sku, cost_price, selling_price, minimum_stock_level, status").eq("business_id", session.businessId).eq("status", "active").limit(150),
       listInventory(session.businessId),
       supabase.from("sales").select("invoice_number, total, status, sale_date").eq("business_id", session.businessId).order("sale_date", { ascending: false }).limit(15),
-      supabase.from("alerts").select("title, severity, is_read").eq("business_id", session.businessId).eq("is_read", false).limit(10),
+      supabase.from("alerts").select("title, severity, is_read").eq("business_id", session.businessId).eq("is_read", false).limit(12),
+      supabase
+        .from("product_price_history")
+        .select("product_id, cost_price, selling_price, created_at, products(name, sku)")
+        .eq("business_id", session.businessId)
+        .order("created_at", { ascending: false })
+        .limit(40),
+      getUsdNgnRate(session.businessId),
+      fetchLiveUsdNgnRate(),
     ]);
+
+    const latest = new Map<string, { cost: number; sell: number; name: string; sku: string }>();
+    const previous = new Map<string, { cost: number; sell: number }>();
+    for (const row of historyRows.data ?? []) {
+      const product = row.products as { name?: string; sku?: string } | null;
+      if (!latest.has(row.product_id)) {
+        latest.set(row.product_id, {
+          cost: toNumber(row.cost_price),
+          sell: toNumber(row.selling_price),
+          name: product?.name ?? "Product",
+          sku: product?.sku ?? "",
+        });
+        continue;
+      }
+      if (!previous.has(row.product_id)) {
+        previous.set(row.product_id, { cost: toNumber(row.cost_price), sell: toNumber(row.selling_price) });
+      }
+    }
+    const recentPriceChanges: Array<{ name: string; sku: string; field: string; direction: string; from: number; to: number }> = [];
+    for (const [productId, next] of latest) {
+      const prior = previous.get(productId);
+      if (!prior) continue;
+      if (next.sell !== prior.sell) {
+        recentPriceChanges.push({
+          name: next.name,
+          sku: next.sku,
+          field: "selling price",
+          direction: next.sell > prior.sell ? "increased" : "decreased",
+          from: prior.sell,
+          to: next.sell,
+        });
+      }
+      if (next.cost !== prior.cost) {
+        recentPriceChanges.push({
+          name: next.name,
+          sku: next.sku,
+          field: "cost",
+          direction: next.cost > prior.cost ? "increased" : "decreased",
+          from: prior.cost,
+          to: next.cost,
+        });
+      }
+    }
 
     const context = {
       currency: session.business?.currency,
+      fx: { companyUsdNgnRate, liveUsdNgnRate },
+      recentPriceChanges: recentPriceChanges.slice(0, 12),
       products: products.data ?? [],
-      stock: inventory.slice(0, 80).map((row) => ({
+      stock: inventory.slice(0, 120).map((row) => ({
         sku: row.products?.sku,
         name: row.products?.name,
         warehouse: row.warehouses?.name,
@@ -296,9 +380,19 @@ export async function askAiAction(question: string): Promise<ActionResult<string
     const fallback = answerFromInventory(q, context);
     if (isAiConfigured()) {
       try {
-        const answer = await completeText(
-          "You are an inventory assistant for this company only. Answer using only the provided data. If something is not in the data, say you do not have it. Never invent SKUs, invoices, or quantities. Keep answers short and practical.",
-          JSON.stringify({ question: q, ...context }),
+        const turns: ChatTurn[] = [
+          ...history
+            .filter((turn) => turn.content.trim())
+            .slice(-10)
+            .map((turn) => ({ role: turn.role, content: turn.content.slice(0, 1200) })),
+          {
+            role: "user",
+            content: `Question: ${q}\n\nLive AAML data (use only this):\n${JSON.stringify(context)}`,
+          },
+        ];
+        const answer = await completeChat(
+          "You are AAML's staff inventory assistant. Answer from the live data and chat history. Know naira and the USD/NGN company rate plus any live market rate provided. If a price increased or decreased, say so in NGN and USD. Never invent SKUs, invoices, or quantities. Keep answers short and practical.",
+          turns,
         );
         if (answer?.trim()) return ok(answer.trim());
       } catch (error) {

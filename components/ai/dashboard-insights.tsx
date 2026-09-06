@@ -16,6 +16,7 @@ export function DashboardInsights() {
 
   const payload = data?.ok ? data.data : null;
   const items = payload?.reorder.items ?? [];
+  const error = data && !data.ok ? data.error : null;
 
   return (
     <div className="grid gap-4 lg:grid-cols-2">
@@ -27,7 +28,9 @@ export function DashboardInsights() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          {items.length === 0 ? (
+          {error ? (
+            <p className="text-sm text-amber-700 dark:text-amber-300">{error}</p>
+          ) : items.length === 0 ? (
             <p className="text-sm text-slate-500">No items are at or below minimum stock. This list updates from live inventory, even if the AI model is offline.</p>
           ) : (
             items.slice(0, 5).map((item) => (
@@ -53,7 +56,9 @@ export function DashboardInsights() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {payload?.demand ? (
+          {error ? (
+            <p className="text-sm text-amber-700 dark:text-amber-300">{error}</p>
+          ) : payload?.demand ? (
             <div className="space-y-2 text-sm">
               <p>
                 Last 14 days: <strong>{formatNumber(payload.demand.last14Qty)}</strong> units sold
@@ -65,7 +70,7 @@ export function DashboardInsights() {
               {payload.demand.commentary ? <p className="text-slate-600 dark:text-slate-300">{payload.demand.commentary}</p> : null}
             </div>
           ) : (
-            <p className="text-sm text-slate-500">Sales trend appears here once invoices are recorded.</p>
+            <p className="text-sm text-slate-500">{data ? "Sales trend appears here once invoices are recorded." : "Loading outlook…"}</p>
           )}
         </CardContent>
       </Card>

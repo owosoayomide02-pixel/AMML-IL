@@ -15,6 +15,7 @@ export function ReorderAdvice() {
   }, []);
 
   const items = data?.ok ? data.data.items : [];
+  const error = data && !data.ok ? data.error : null;
 
   return (
     <Card>
@@ -25,8 +26,10 @@ export function ReorderAdvice() {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        {items.length === 0 ? (
-          <p className="text-sm text-slate-500">Nothing needs restocking right now.</p>
+        {error ? (
+          <p className="text-sm text-amber-700 dark:text-amber-300">{error}</p>
+        ) : items.length === 0 ? (
+          <p className="text-sm text-slate-500">{data ? "Nothing needs restocking right now." : "Loading reorder advice…"}</p>
         ) : (
           <ul className="space-y-2 text-sm">
             {items.map((item) => (

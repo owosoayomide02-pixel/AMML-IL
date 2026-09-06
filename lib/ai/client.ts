@@ -50,13 +50,30 @@ function parseAiError(text: string, status: number) {
   return `AI request failed (${status}).`;
 }
 
-async function requestCompletion(model: string, system: string, user: string, jsonMode: boolean) {
+export type ChatTurn = { role: "user" | "assistant"; content: string };
+
+function extractMessageText(message: unknown) {
+  if (!message || typeof message !== "object") return "";
+  const payload = message as { content?: unknown; reasoning?: unknown };
+  if (typeof payload.content === "string" && payload.content.trim()) return payload.content.trim();
+  if (Array.isArray(payload.content)) {
+    const joined = payload.content
+      .map((part) => (typeof part === "string" ? part : typeof part === "object" && part && "text" in part ? String((part as { text?: string }).text ?? "") : ""))
+      .join("")
+      .trim();
+    if (joined) return joined;
+  }
+  if (typeof payload.reasoning === "string" && payload.reasoning.trim()) return payload.reasoning.trim();
+  return "";
+}
+
+async function requestCompletion(model: string, system: string, turns: ChatTurn[], jsonMode: boolean) {
   const body: Record<string, unknown> = {
     model,
     temperature: 0.2,
     messages: [
       { role: "system", content: jsonMode ? `${system}\nReturn valid JSON only.` : system },
-      { role: "user", content: user },
+      ...turns.map((turn) => ({ role: turn.role, content: turn.content })),
     ],
   };
   if (jsonMode) body.response_format = { type: "json_object" };
@@ -71,24 +88,22 @@ async function requestCompletion(model: string, system: string, user: string, js
   });
 }
 
-async function complete(system: string, user: string, jsonMode: boolean): Promise<string | null> {
+async function complete(system: string, turns: ChatTurn[], jsonMode: boolean): Promise<string | null> {
   const key = apiKey();
   if (!key) return null;
 
   let lastError = "AI request failed.";
   for (const model of modelsToTry()) {
     for (const useJson of jsonMode ? [true, false] : [false]) {
-      const response = await requestCompletion(model, system, user, useJson);
+      const response = await requestCompletion(model, system, turns, useJson);
       if (!response.ok) {
         lastError = parseAiError(await response.text(), response.status);
         if (/model/i.test(lastError) || /json|response_format/i.test(lastError)) continue;
         throw new Error(lastError);
       }
 
-      const payload = (await response.json()) as {
-        choices?: Array<{ message?: { content?: string } }>;
-      };
-      const content = payload.choices?.[0]?.message?.content;
+      const payload = (await response.json()) as { choices?: Array<{ message?: unknown }> };
+      const content = extractMessageText(payload.choices?.[0]?.message);
       if (content) return content;
     }
   }
@@ -97,7 +112,7 @@ async function complete(system: string, user: string, jsonMode: boolean): Promis
 }
 
 export async function completeJson<T>(system: string, user: string): Promise<T | null> {
-  const content = await complete(system, user, true);
+  const content = await complete(system, [{ role: "user", content: user }], true);
   if (!content) return null;
   const start = content.indexOf("{");
   const end = content.lastIndexOf("}");
@@ -106,5 +121,13 @@ export async function completeJson<T>(system: string, user: string): Promise<T |
 }
 
 export async function completeText(system: string, user: string): Promise<string | null> {
-  return complete(system, user, false);
+  return complete(system, [{ role: "user", content: user }], false);
+}
+
+export async function completeChat(system: string, turns: ChatTurn[]): Promise<string | null> {
+  const history = turns
+    .filter((turn) => turn.content.trim())
+    .slice(-16);
+  if (history.length === 0) return null;
+  return complete(system, history, false);
 }

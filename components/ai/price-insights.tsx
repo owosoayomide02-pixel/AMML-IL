@@ -31,7 +31,7 @@ export function PriceInsights({ productId }: { productId: string }) {
           <>
             <p>
               Margin <strong>{(insight.margin * 100).toFixed(1)}%</strong>. Suggested selling price{" "}
-              <strong>{formatNgnUsd(insight.suggested)}</strong> at a 30% target.
+              <strong>{formatNgnUsd(insight.suggested)}</strong> using a 30% markup on cost.
             </p>
             {insight.flags.length > 0 ? (
               <ul className="list-disc space-y-1 pl-5 text-amber-700 dark:text-amber-300">
