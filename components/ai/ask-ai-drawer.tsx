@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Sparkles, Trash2, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 type ChatMessage = { role: "user" | "assistant"; text: string };
 type Meta = { configured: boolean; companyUsdNgnRate: number; liveUsdNgnRate: number | null; currency: string };
@@ -35,7 +36,7 @@ export function AskAiDrawer() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [meta, setMeta] = useState<Meta | null>(null);
   const [ready, setReady] = useState(false);
-  const endRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setMessages(loadHistory());
@@ -48,14 +49,21 @@ export function AskAiDrawer() {
   }, [messages, ready]);
 
   useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (!open) return;
+    const node = listRef.current;
+    if (node) node.scrollTop = node.scrollHeight;
   }, [messages, loading, open]);
 
   useEffect(() => {
     if (!open) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
     void getAskAiMetaAction().then((result) => {
       if (result.ok) setMeta(result.data);
     });
+    return () => {
+      document.body.style.overflow = previous;
+    };
   }, [open]);
 
   async function send(text: string) {
@@ -76,6 +84,101 @@ export function AskAiDrawer() {
     ]);
   }
 
+  const panel =
+    open && ready ? (
+      <div className="fixed inset-0 z-[80] flex items-stretch justify-end">
+        <button type="button" className="absolute inset-0 bg-slate-900/40" aria-label="Close Ask AI" onClick={() => setOpen(false)} />
+        <div className="relative z-10 flex h-dvh max-h-dvh w-full max-w-md flex-col bg-white shadow-xl dark:bg-slate-950">
+          <div className="flex shrink-0 items-start justify-between gap-3 border-b border-slate-200 px-4 py-3 dark:border-slate-800">
+            <div>
+              <p className="font-semibold">AAML assistant</p>
+              <p className="text-xs text-slate-500">
+                {meta
+                  ? `1 USD = ₦${meta.companyUsdNgnRate}${meta.liveUsdNgnRate ? ` · live ₦${meta.liveUsdNgnRate}` : ""}`
+                  : "Stock, prices, and dollar rate"}
+              </p>
+            </div>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                className="rounded-lg p-1 hover:bg-slate-100 dark:hover:bg-slate-800"
+                aria-label="New chat"
+                onClick={() => {
+                  setMessages([]);
+                  window.localStorage.removeItem(STORAGE_KEY);
+                }}
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
+              <button type="button" onClick={() => setOpen(false)} className="rounded-lg p-1 hover:bg-slate-100 dark:hover:bg-slate-800">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+          <div ref={listRef} className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-3">
+            {messages.length === 0 ? (
+              <div className="space-y-3">
+                <p className="text-sm text-slate-500">Ask the books or the public web: revenue, scarce SKUs, part lookups, Nigeria market notes.</p>
+                <div className="flex flex-wrap gap-2">
+                  {STARTERS.map((starter) => (
+                    <button
+                      key={starter}
+                      type="button"
+                      className="rounded-full border border-slate-200 px-3 py-1 text-xs hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800"
+                      onClick={() => void send(starter)}
+                    >
+                      {starter}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              messages.map((message, index) => (
+                <div
+                  key={`${message.role}-${index}`}
+                  className={
+                    message.role === "user"
+                      ? "ml-6 whitespace-pre-wrap rounded-xl bg-brand-600 px-3 py-2 text-sm text-white"
+                      : "mr-6 whitespace-pre-wrap rounded-xl bg-slate-100 px-3 py-2 text-sm dark:bg-slate-800"
+                  }
+                >
+                  {message.text}
+                </div>
+              ))
+            )}
+            {loading ? <p className="mr-6 rounded-xl bg-slate-100 px-3 py-2 text-sm text-slate-500 dark:bg-slate-800">Thinking…</p> : null}
+          </div>
+          <form
+            className="shrink-0 border-t border-slate-200 bg-white p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] dark:border-slate-800 dark:bg-slate-950"
+            onSubmit={(event) => {
+              event.preventDefault();
+              void send(question);
+            }}
+          >
+            <div className="flex items-end gap-2">
+              <Textarea
+                value={question}
+                onChange={(event) => setQuestion(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" && !event.shiftKey) {
+                    event.preventDefault();
+                    void send(question);
+                  }
+                }}
+                placeholder="Ask about revenue, stock, or the dollar rate…"
+                rows={2}
+                disabled={loading}
+                className="min-h-11 max-h-28 flex-1 resize-none"
+              />
+              <Button className="shrink-0" type="submit" loading={loading}>
+                Send
+              </Button>
+            </div>
+          </form>
+        </div>
+      </div>
+    ) : null;
+
   return (
     <>
       <button
@@ -87,97 +190,7 @@ export function AskAiDrawer() {
       >
         <Sparkles className="h-5 w-5" />
       </button>
-      {open ? (
-        <div className="fixed inset-0 z-50 flex justify-end">
-          <button className="absolute inset-0 bg-slate-900/40" aria-label="Close Ask AI" onClick={() => setOpen(false)} />
-          <div className="relative z-10 flex h-full w-full max-w-md flex-col bg-white shadow-xl dark:bg-slate-950">
-            <div className="flex items-start justify-between gap-3 border-b border-slate-200 px-4 py-3 dark:border-slate-800">
-              <div>
-                <p className="font-semibold">AAML assistant</p>
-                <p className="text-xs text-slate-500">
-                  {meta
-                    ? `1 USD = ₦${meta.companyUsdNgnRate}${meta.liveUsdNgnRate ? ` · live ₦${meta.liveUsdNgnRate}` : ""}`
-                    : "Stock, prices, and dollar rate"}
-                </p>
-              </div>
-              <div className="flex items-center gap-1">
-                <button
-                  type="button"
-                  className="rounded-lg p-1 hover:bg-slate-100 dark:hover:bg-slate-800"
-                  aria-label="New chat"
-                  onClick={() => {
-                    setMessages([]);
-                    window.localStorage.removeItem(STORAGE_KEY);
-                  }}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
-                <button type="button" onClick={() => setOpen(false)} className="rounded-lg p-1 hover:bg-slate-100 dark:hover:bg-slate-800">
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-            </div>
-            <div className="flex-1 space-y-3 overflow-y-auto p-4">
-              {messages.length === 0 ? (
-                <div className="space-y-3">
-                  <p className="text-sm text-slate-500">Ask the books or the public web: revenue, scarce SKUs, part lookups, Nigeria market notes. History stays on this device.</p>
-                  <div className="flex flex-wrap gap-2">
-                    {STARTERS.map((starter) => (
-                      <button
-                        key={starter}
-                        type="button"
-                        className="rounded-full border border-slate-200 px-3 py-1 text-xs hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800"
-                        onClick={() => void send(starter)}
-                      >
-                        {starter}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                messages.map((message, index) => (
-                  <div
-                    key={`${message.role}-${index}`}
-                    className={
-                      message.role === "user"
-                        ? "ml-8 whitespace-pre-wrap rounded-xl bg-brand-600 px-3 py-2 text-sm text-white"
-                        : "mr-8 whitespace-pre-wrap rounded-xl bg-slate-100 px-3 py-2 text-sm dark:bg-slate-800"
-                    }
-                  >
-                    {message.text}
-                  </div>
-                ))
-              )}
-              {loading ? <p className="mr-8 rounded-xl bg-slate-100 px-3 py-2 text-sm text-slate-500 dark:bg-slate-800">Thinking…</p> : null}
-              <div ref={endRef} />
-            </div>
-            <form
-              className="border-t border-slate-200 p-4 dark:border-slate-800"
-              onSubmit={(event) => {
-                event.preventDefault();
-                void send(question);
-              }}
-            >
-              <Textarea
-                value={question}
-                onChange={(event) => setQuestion(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter" && !event.shiftKey) {
-                    event.preventDefault();
-                    void send(question);
-                  }
-                }}
-                placeholder="Ask about revenue, scarce products, stock, or the dollar rate…"
-                rows={3}
-                disabled={loading}
-              />
-              <Button className="mt-3 w-full" type="submit" loading={loading}>
-                Send
-              </Button>
-            </form>
-          </div>
-        </div>
-      ) : null}
+      {panel ? createPortal(panel, document.body) : null}
     </>
   );
 }
