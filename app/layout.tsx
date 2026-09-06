@@ -11,8 +11,11 @@ export const metadata: Metadata = {
   },
   description: appConfig.description,
   icons: {
-    icon: "/aaml-mark.png",
-    apple: "/aaml-mark.png",
+    icon: [
+      { url: "/favicon.png", type: "image/png", sizes: "48x48" },
+      { url: "/favicon-32.png", type: "image/png", sizes: "32x32" },
+    ],
+    apple: "/apple-icon.png",
   },
 };
 
