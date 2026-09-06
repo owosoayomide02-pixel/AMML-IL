@@ -1,9 +1,10 @@
 import "server-only";
 
 import { DEFAULT_USD_NGN_RATE } from "@/lib/money";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { toNumber } from "@/lib/utils";
-import type { Alert, AuditLog, Category, Customer, Product, Profile, Supplier, Warehouse } from "@/types";
+import type { Alert, AuditLog, Business, Category, Customer, Product, Profile, Supplier, Warehouse } from "@/types";
 
 export async function listCategories(businessId: string) {
   const supabase = await createClient();
@@ -265,10 +266,25 @@ export async function listAlerts(businessId: string) {
   return (data ?? []) as Alert[];
 }
 
+export async function getBusiness(businessId: string) {
+  const supabase = await createClient();
+  const { data } = await supabase.from("businesses").select("*").eq("id", businessId).maybeSingle();
+  return (data ?? null) as Business | null;
+}
+
 export async function listUsers(businessId: string) {
   const supabase = await createClient();
   const { data } = await supabase.from("profiles").select("*").eq("business_id", businessId).order("full_name");
-  return (data ?? []) as Profile[];
+  const members = (data ?? []) as Profile[];
+
+  try {
+    const admin = createAdminClient();
+    const { data: leftover } = await admin.from("profiles").select("*").is("business_id", null).order("email");
+    const extras = ((leftover ?? []) as Profile[]).filter((profile) => !members.some((member) => member.id === profile.id));
+    return [...members, ...extras];
+  } catch {
+    return members;
+  }
 }
 
 export async function listAuditLogs(businessId: string) {

@@ -4,6 +4,7 @@ import { fail, ok, type ActionResult } from "@/lib/action-result";
 import { appConfig } from "@/lib/config";
 import { getErrorMessage, logError } from "@/lib/errors";
 import { createClient } from "@/lib/supabase/server";
+import { attachToSoleBusiness } from "@/lib/users";
 import { forgotPasswordSchema, loginSchema, resetPasswordSchema } from "@/schemas";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -23,15 +24,13 @@ export async function loginAction(input: unknown): Promise<ActionResult<{ redire
       return fail("Invalid email or password.");
     }
 
-    await supabase
-      .from("profiles")
-      .update({ last_login_at: new Date().toISOString() })
-      .eq("id", (await supabase.auth.getUser()).data.user?.id ?? "");
+    const userId = (await supabase.auth.getUser()).data.user?.id ?? "";
+    await supabase.from("profiles").update({ last_login_at: new Date().toISOString() }).eq("id", userId);
 
     const { data: profile } = await supabase
       .from("profiles")
       .select("business_id, status")
-      .eq("id", (await supabase.auth.getUser()).data.user?.id ?? "")
+      .eq("id", userId)
       .maybeSingle();
 
     if (profile?.status === "disabled") {
@@ -39,7 +38,18 @@ export async function loginAction(input: unknown): Promise<ActionResult<{ redire
       return fail("This account has been disabled. Contact your administrator.");
     }
 
-    return ok({ redirectTo: profile?.business_id ? "/dashboard" : "/onboarding" });
+    if (profile?.business_id) {
+      return ok({ redirectTo: "/dashboard" });
+    }
+
+    try {
+      const joined = await attachToSoleBusiness(userId);
+      if (joined) return ok({ redirectTo: "/dashboard" });
+    } catch {
+      // First-time setup still uses onboarding when no company exists yet.
+    }
+
+    return ok({ redirectTo: "/onboarding" });
   } catch (error) {
     logError("login", error);
     return fail(getErrorMessage(error, "Unable to sign in."));

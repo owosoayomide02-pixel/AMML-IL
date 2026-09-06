@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { AppError } from "@/lib/errors";
 import { assertCan, can, type Permission } from "@/lib/permissions";
 import type { Business, Profile, Role, SessionContext } from "@/types";
+import { attachToSoleBusiness } from "@/lib/users";
 
 export async function getSessionContext(): Promise<SessionContext | null> {
   const supabase = await createClient();
@@ -36,6 +37,20 @@ export async function getSessionContext(): Promise<SessionContext | null> {
   }
 
   if (!profile) return null;
+
+  if (!profile.business_id) {
+    try {
+      const joined = await attachToSoleBusiness(user.id, {
+        email: user.email ?? profile.email,
+        fullName: profile.full_name,
+      });
+      if (joined) {
+        profile = { ...profile, business_id: joined.businessId, role: joined.role, status: "active" };
+      }
+    } catch {
+      // Leave the user on onboarding when no company exists yet.
+    }
+  }
 
   let business: Business | null = null;
   if (profile.business_id) {

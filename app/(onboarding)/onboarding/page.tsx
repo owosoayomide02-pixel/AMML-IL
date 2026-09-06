@@ -1,11 +1,24 @@
 import { OnboardingFlow } from "@/components/onboarding/onboarding-flow";
 import { requireSession } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
+import { attachToSoleBusiness } from "@/lib/users";
 import { redirect } from "next/navigation";
 
 export default async function OnboardingPage() {
   const session = await requireSession();
   const supabase = await createClient();
+
+  if (!session.profile.business_id) {
+    try {
+      const joined = await attachToSoleBusiness(session.userId, {
+        email: session.email,
+        fullName: session.profile.full_name,
+      });
+      if (joined) redirect("/dashboard");
+    } catch {
+      // Continue first-time company setup when no business exists yet.
+    }
+  }
 
   let step = 1;
   let categoryId: string | undefined;

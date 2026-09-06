@@ -17,7 +17,7 @@ export function InviteForm() {
   const router = useRouter();
   const form = useForm({
     resolver: zodResolver(inviteUserSchema),
-    defaultValues: { email: "", fullName: "", role: "viewer" as const },
+    defaultValues: { email: "", fullName: "", password: "", role: "viewer" as const },
   });
 
   return (
@@ -29,7 +29,7 @@ export function InviteForm() {
           toast.error(result.error);
           return;
         }
-        toast.success("Invitation sent");
+        toast.success("User added. They can sign in now.");
         form.reset();
         router.refresh();
       })}
@@ -46,6 +46,11 @@ export function InviteForm() {
           <FieldError message={form.formState.errors.email?.message} />
         </div>
         <div>
+          <Label>Password</Label>
+          <Input type="password" autoComplete="new-password" {...form.register("password")} />
+          <FieldError message={form.formState.errors.password?.message} />
+        </div>
+        <div>
           <Label>Role</Label>
           <Select {...form.register("role")}>
             {ROLES.filter((role) => role !== "owner").map((role) => (
@@ -56,7 +61,7 @@ export function InviteForm() {
           </Select>
         </div>
       </FormGrid>
-      <Button loading={form.formState.isSubmitting}>Send invite</Button>
+      <Button loading={form.formState.isSubmitting}>Add user</Button>
     </form>
   );
 }

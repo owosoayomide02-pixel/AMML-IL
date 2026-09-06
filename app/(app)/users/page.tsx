@@ -6,7 +6,7 @@ import { Forbidden } from "@/components/ui/forbidden";
 import { PageHeader } from "@/components/ui/page-header";
 import { Table, TBody, Td, Th, THead } from "@/components/ui/table";
 import { can } from "@/lib/permissions";
-import { listUsers } from "@/lib/queries";
+import { getBusiness, listUsers } from "@/lib/queries";
 import { requirePageAccess } from "@/lib/session";
 import { humanizeStatus, statusVariant } from "@/lib/status";
 import { formatDateTime } from "@/lib/utils";
@@ -15,16 +15,16 @@ import { ROLE_LABELS } from "@/lib/permissions";
 export default async function UsersPage() {
   const { session, allowed } = await requirePageAccess("users.read");
   if (!allowed) return <Forbidden />;
-  const users = await listUsers(session.businessId);
+  const [users, business] = await Promise.all([listUsers(session.businessId), getBusiness(session.businessId)]);
   const canWrite = can(session.role, "users.write");
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Users" description="Invite staff and control roles. Public sign-up is disabled." />
+      <PageHeader title="Users" description="Add staff to this company and control roles. Public sign-up is disabled." />
       {canWrite ? (
         <Card>
           <CardHeader>
-            <CardTitle>Invite a staff member</CardTitle>
+            <CardTitle>Add a staff member</CardTitle>
           </CardHeader>
           <CardContent>
             <InviteForm />
@@ -50,12 +50,21 @@ export default async function UsersPage() {
                 <Td>{user.email}</Td>
                 <Td>{ROLE_LABELS[user.role]}</Td>
                 <Td>
-                  <Badge variant={statusVariant(user.status)}>{humanizeStatus(user.status)}</Badge>
+                  {user.business_id ? (
+                    <Badge variant={statusVariant(user.status)}>{humanizeStatus(user.status)}</Badge>
+                  ) : (
+                    <Badge variant="warning">Not joined</Badge>
+                  )}
                 </Td>
                 <Td>{formatDateTime(user.last_login_at)}</Td>
                 {canWrite ? (
                   <Td className="text-right">
-                    <UserRowActions user={user} currentUserId={session.userId} currentRole={session.role} />
+                    <UserRowActions
+                      user={user}
+                      currentUserId={session.userId}
+                      currentRole={session.role}
+                      isCompanyOwner={business?.owner_id === user.id}
+                    />
                   </Td>
                 ) : null}
               </tr>

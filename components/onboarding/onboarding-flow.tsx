@@ -66,8 +66,14 @@ export function OnboardingFlow({
                 address: String(form.get("address") ?? ""),
                 taxNumber: String(form.get("taxNumber") ?? ""),
               });
-              return result.ok ? { ok: true } : result;
-            }, 2);
+              if (!result.ok) return result;
+              if (result.data.joinedExisting) {
+                window.location.assign("/dashboard");
+                return { ok: true };
+              }
+              setStep(2);
+              return { ok: true };
+            });
           }}
         >
           <h1 className="text-2xl font-semibold">Tell us about your business</h1>

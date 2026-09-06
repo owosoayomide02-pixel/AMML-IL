@@ -211,6 +211,7 @@ export const countItemSchema = z.object({
 export const inviteUserSchema = z.object({
   email: z.string().email("Enter a valid email"),
   fullName: z.string().min(2, "Enter a name"),
+  password: z.string().min(8, "Password must be at least 8 characters"),
   role: z.enum(ROLES).refine((role) => role !== "owner", {
     message: "Ownership cannot be assigned this way",
   }),

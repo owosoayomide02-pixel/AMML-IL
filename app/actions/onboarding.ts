@@ -5,6 +5,7 @@ import { getErrorMessage, logError } from "@/lib/errors";
 import { requireSession } from "@/lib/session";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { attachToSoleBusiness } from "@/lib/users";
 import {
   categorySchema,
   onboardingBusinessSchema,
@@ -15,7 +16,9 @@ import {
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-export async function createBusinessAction(input: unknown): Promise<ActionResult<{ businessId: string }>> {
+export async function createBusinessAction(
+  input: unknown,
+): Promise<ActionResult<{ businessId: string; joinedExisting?: boolean }>> {
   try {
     const data = onboardingBusinessSchema.parse(input);
     const session = await requireSession();
@@ -32,7 +35,13 @@ export async function createBusinessAction(input: unknown): Promise<ActionResult
       const admin = createAdminClient();
       const { count } = await admin.from("businesses").select("id", { count: "exact", head: true });
       if ((count ?? 0) > 0) {
-        return fail("This company already has an account. Ask an administrator to add you.");
+        const joined = await attachToSoleBusiness(session.userId, {
+          email: session.email,
+          fullName: session.profile.full_name,
+        });
+        if (!joined) return fail("Unable to add this login to the company.");
+        revalidatePath("/", "layout");
+        return ok({ businessId: joined.businessId, joinedExisting: true });
       }
     } catch {
       // Service role is optional locally; continue with first-time setup.
