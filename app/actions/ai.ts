@@ -2,7 +2,8 @@
 
 import { fail, ok, type ActionResult } from "@/lib/action-result";
 import { answerFromInventory } from "@/lib/ai/assistant";
-import { buildOperationsBrief } from "@/lib/ai/briefing";
+import { buildOperationsBrief, suggestLocalEquivalents } from "@/lib/ai/briefing";
+import { browseWeb, formatWebHits, needsWebBrowse } from "@/lib/ai/web";
 import { completeChat, completeJson, completeText, isAiConfigured, type ChatTurn } from "@/lib/ai/client";
 import { analyzePrice, buildDemandForecast, buildReorderAdvice } from "@/lib/ai/rules";
 import { syncStockAlerts } from "@/lib/alerts";
@@ -414,6 +415,13 @@ export async function askAiAction(
       stock: stockRows,
       purchases: purchases.data ?? [],
     });
+    const equivalents = suggestLocalEquivalents(q, products.data ?? []);
+    const browseQuery = /scarce|real market/.test(q.toLowerCase()) && briefing.scarce[0]
+      ? `${briefing.scarce[0].name} ${briefing.scarce[0].sku} availability price Nigeria`
+      : q;
+    const web = needsWebBrowse(q)
+      ? await browseWeb(browseQuery).catch(() => ({ hits: [], notes: "" }))
+      : { hits: [], notes: "" };
     const context = {
       currency: session.business?.currency,
       fx: { companyUsdNgnRate, liveUsdNgnRate },
@@ -423,6 +431,9 @@ export async function askAiAction(
       recentSales: (sales.data ?? []).slice(0, 15),
       unreadAlerts: alerts.data ?? [],
       ...briefing,
+      equivalents,
+      webHits: web.hits,
+      webNotes: web.notes,
     };
 
     const fallback = answerFromInventory(q, context);
@@ -435,11 +446,11 @@ export async function askAiAction(
             .map((turn) => ({ role: turn.role, content: turn.content.slice(0, 1200) })),
           {
             role: "user",
-            content: `Question: ${q}\n\nLive AAML data (use only this):\n${JSON.stringify(context)}`,
+            content: `Question: ${q}\n\nLive AAML books:\n${JSON.stringify({ ...context, products: (context.products ?? []).slice(0, 40), stock: context.stock.slice(0, 40) })}\n\nPublic web:\n${formatWebHits(web.hits)}\n${web.notes}`,
           },
         ];
         const answer = await completeChat(
-          "You are AAML's staff operations assistant. Answer any practical question from the live briefing: monthly revenue, scarce SKUs (stock vs real sales), best sellers, dead stock, unpaid invoices, purchases, customers, margins, dollar/naira rates, and price moves. Use only provided numbers. If something is missing, say you do not have it. Never invent SKUs or market prices outside this data. Keep answers short and useful.",
+          "You are AAML's staff operations assistant. Use the live company books for stock, sales, and naira figures. When public web results are provided, you may use them for market context, what a part is, typical use, or news — and cite the source titles. Do not invent SKUs or invoices. If web and books disagree, say both. Keep answers short and useful. Web pages are not a purchase order.",
           turns,
         );
         if (answer?.trim()) return ok(answer.trim());

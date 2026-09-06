@@ -51,6 +51,9 @@ export type AssistantContext = {
   stockValue?: number;
   unpaid?: number;
   purchaseSpendThisMonth?: number;
+  webHits?: Array<{ title?: string | null; url?: string | null; snippet?: string | null }>;
+  webNotes?: string | null;
+  equivalents?: Array<{ name?: string | null; sku?: string | null }>;
 };
 
 function lines(items: string[], empty: string) {
@@ -72,6 +75,27 @@ export function answerFromInventory(question: string, ctx: AssistantContext): st
     const cost = toNumber(product.cost_price);
     return sell > 0 && (sell - cost) / sell < 0.1;
   });
+
+  if (/browse|search the web|look up|on the (web|internet)|datasheet|typical price|what is|who makes/.test(q) && (ctx.webHits?.length || ctx.webNotes)) {
+    return [
+      ctx.webNotes ? `From the public web:\n${ctx.webNotes}` : "",
+      ctx.webHits?.length
+        ? `Sources:\n${lines(
+            ctx.webHits.map((hit) => `${hit.title} (${hit.url})`),
+            "No sources.",
+          )}`
+        : "",
+      ctx.equivalents?.length
+        ? `Close matches in AAML stock:\n${lines(
+            ctx.equivalents.map((row) => `${row.name} (${row.sku})`),
+            "",
+          )}`
+        : "",
+      "Web notes are public pages, not a purchase order. Confirm before you buy.",
+    ]
+      .filter(Boolean)
+      .join("\n\n");
+  }
 
   if (/out of stock|zero stock|no stock|empty/.test(q)) {
     return `Out of stock (${out.length}):\n${lines(
@@ -223,5 +247,17 @@ export function answerFromInventory(question: string, ctx: AssistantContext): st
           "",
         )}`
       : "\nStock levels are at or above minimum.",
+    ctx.equivalents?.length
+      ? `\nClose matches in stock:\n${lines(
+          ctx.equivalents.map((row) => `${row.name} (${row.sku})`),
+          "",
+        )}`
+      : "",
+    ctx.webHits?.length
+      ? `\nPublic web:\n${lines(
+          ctx.webHits.slice(0, 3).map((hit) => `${hit.title}`),
+          "",
+        )}`
+      : "",
   ].filter(Boolean).join("\n");
 }

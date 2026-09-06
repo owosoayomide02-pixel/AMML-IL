@@ -12,8 +12,8 @@ type Meta = { configured: boolean; companyUsdNgnRate: number; liveUsdNgnRate: nu
 const STORAGE_KEY = "aaml-ask-ai-history";
 const STARTERS = [
   "What is this month's revenue?",
-  "What is the most scarce product?",
-  "What are the best sellers?",
+  "What is the most scarce product in the real market?",
+  "Look up Siemens 24V relay prices in Nigeria",
   "What is the dollar rate?",
 ];
 
@@ -120,7 +120,7 @@ export function AskAiDrawer() {
             <div className="flex-1 space-y-3 overflow-y-auto p-4">
               {messages.length === 0 ? (
                 <div className="space-y-3">
-                  <p className="text-sm text-slate-500">Ask anything about this company: monthly revenue, scarce SKUs, best sellers, dollar rate, unpaid invoices. History stays on this device.</p>
+                  <p className="text-sm text-slate-500">Ask the books or the public web: revenue, scarce SKUs, part lookups, Nigeria market notes. History stays on this device.</p>
                   <div className="flex flex-wrap gap-2">
                     {STARTERS.map((starter) => (
                       <button

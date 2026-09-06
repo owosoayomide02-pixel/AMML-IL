@@ -169,3 +169,24 @@ export function buildOperationsBrief(input: {
     purchaseSpendThisMonth,
   };
 }
+
+export function suggestLocalEquivalents(
+  question: string,
+  products: Array<{ name?: string | null; sku?: string | null }>,
+) {
+  const tokens = question
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter((token) => token.length >= 4 && !["what", "this", "that", "with", "from", "have", "most", "product"].includes(token));
+  if (!tokens.length) return [];
+  return products
+    .map((product) => {
+      const hay = `${product.name ?? ""} ${product.sku ?? ""}`.toLowerCase();
+      const score = tokens.filter((token) => hay.includes(token)).length;
+      return { name: product.name ?? "", sku: product.sku ?? "", score };
+    })
+    .filter((row) => row.score > 0 && row.name)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 5)
+    .map(({ name, sku }) => ({ name, sku }));
+}
