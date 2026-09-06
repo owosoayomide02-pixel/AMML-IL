@@ -1,3 +1,4 @@
+import type { CustomerRow, MonthBucket, ScarceRow, SellerRow } from "@/lib/ai/briefing";
 import { toNumber } from "@/lib/utils";
 
 export type AssistantContext = {
@@ -39,6 +40,17 @@ export type AssistantContext = {
     from?: number | null;
     to?: number | null;
   }>;
+  months?: MonthBucket[];
+  thisMonthRevenue?: number;
+  lastMonthRevenue?: number;
+  thisMonthInvoices?: number;
+  topSellers?: SellerRow[];
+  scarce?: ScarceRow[];
+  deadStock?: Array<{ name?: string | null; sku?: string | null; available?: number | null; sold30?: number | null }>;
+  topCustomers?: CustomerRow[];
+  stockValue?: number;
+  unpaid?: number;
+  purchaseSpendThisMonth?: number;
 };
 
 function lines(items: string[], empty: string) {
@@ -68,13 +80,76 @@ export function answerFromInventory(question: string, ctx: AssistantContext): st
     )}`;
   }
 
-  if (/low|reorder|running out|minimum|replenish/.test(q)) {
+  if (/low|reorder|minimum|replenish/.test(q) && !/scarce|real market|days of cover/.test(q)) {
     return `Needs attention (${low.length + out.length} SKUs):\n${lines(
       [...out, ...low].map(
         (row) => `${row.name} (${row.sku}): ${row.available} available, minimum ${row.min}`,
       ),
       "No SKUs are at or below their minimum level.",
     )}`;
+  }
+
+  if (/scarce|scarcity|fastest selling|days of cover|real market|running out fast|most demanded/.test(q)) {
+    const scarce = ctx.scarce ?? [];
+    return `Most scarce in AAML's actual sales (stock vs last 30 days):\n${lines(
+      scarce.map(
+        (row) =>
+          `${row.name} (${row.sku}): ${row.available} left, sold ${row.sold30} in 30 days${row.daysOfCover != null ? `, ~${row.daysOfCover} days cover` : ""} — ${row.reason}`,
+      ),
+      "Nothing looks scarce from recent sales. Record invoices to see market pressure.",
+    )}`;
+  }
+
+  if (/monthly|this month|last month|revenue|turnover|how much.*(made|sold|earn)/.test(q)) {
+    const months = ctx.months ?? [];
+    const thisMonth = ctx.thisMonthRevenue ?? 0;
+    const lastMonth = ctx.lastMonthRevenue ?? 0;
+    const delta = lastMonth === 0 ? (thisMonth > 0 ? 100 : 0) : Math.round(((thisMonth - lastMonth) / lastMonth) * 100);
+    return [
+      `This month: ${thisMonth.toFixed(2)} ${ctx.currency ?? "NGN"} from ${ctx.thisMonthInvoices ?? 0} invoices.`,
+      `Last month: ${lastMonth.toFixed(2)} ${ctx.currency ?? "NGN"} (${delta >= 0 ? "+" : ""}${delta}% vs last month).`,
+      months.length
+        ? `Last 6 months:\n${lines(
+            months.map((month) => `${month.label}: ${month.revenue.toFixed(2)} (${month.invoices} invoices)`),
+            "No monthly sales yet.",
+          )}`
+        : "",
+    ]
+      .filter(Boolean)
+      .join("\n");
+  }
+
+  if (/best seller|topseller|top seller|most sold|fast moving/.test(q)) {
+    return `Best sellers (last 30 days):\n${lines(
+      (ctx.topSellers ?? []).map((row) => `${row.name} (${row.sku}): ${row.qty} sold · ${row.revenue.toFixed(2)} ${ctx.currency ?? ""}`),
+      "No sales in the last 30 days.",
+    )}`;
+  }
+
+  if (/dead stock|slow moving|not selling|sitting/.test(q)) {
+    return `Slow / dead stock (on hand, no sales in 30 days):\n${lines(
+      (ctx.deadStock ?? []).map((row) => `${row.name} (${row.sku}): ${row.available} available`),
+      "No idle stock showed up in the last 30 days.",
+    )}`;
+  }
+
+  if (/unpaid|outstanding|receivable|balance due/.test(q)) {
+    return `Unpaid sales balance: ${(ctx.unpaid ?? 0).toFixed(2)} ${ctx.currency ?? "NGN"}.`;
+  }
+
+  if (/purchase|bought|supplier spend/.test(q)) {
+    return `Purchases this month: ${(ctx.purchaseSpendThisMonth ?? 0).toFixed(2)} ${ctx.currency ?? "NGN"}.`;
+  }
+
+  if (/customer|who bought|top buyer/.test(q)) {
+    return `Top customers:\n${lines(
+      (ctx.topCustomers ?? []).map((row) => `${row.name}: ${row.revenue.toFixed(2)} ${ctx.currency ?? ""} · ${row.invoices} invoices · unpaid ${row.unpaid.toFixed(2)}`),
+      "No customer sales are on file yet.",
+    )}`;
+  }
+
+  if (/stock value|inventory value|worth/.test(q)) {
+    return `On-hand stock value at cost: ${(ctx.stockValue ?? 0).toFixed(2)} ${ctx.currency ?? "NGN"}.`;
   }
 
   if (/alert|notif/.test(q)) {
@@ -138,6 +213,8 @@ export function answerFromInventory(question: string, ctx: AssistantContext): st
     `• ${low.length} at or below minimum`,
     `• ${ctx.unreadAlerts.length} unread alerts`,
     `• ${ctx.recentSales.length} recent invoices`,
+    ctx.thisMonthRevenue != null ? `• This month revenue ${ctx.thisMonthRevenue.toFixed(2)} ${ctx.currency ?? ""}` : "",
+    ctx.scarce?.[0] ? `• Most scarce: ${ctx.scarce[0].name} (${ctx.scarce[0].sku})` : "",
     ctx.fx?.companyUsdNgnRate ? `• Company rate 1 USD = ₦${ctx.fx.companyUsdNgnRate}` : "",
     ctx.fx?.liveUsdNgnRate ? `• Live market 1 USD = ₦${ctx.fx.liveUsdNgnRate}` : "",
     out.length || low.length

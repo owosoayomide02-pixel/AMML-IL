@@ -11,10 +11,10 @@ type Meta = { configured: boolean; companyUsdNgnRate: number; liveUsdNgnRate: nu
 
 const STORAGE_KEY = "aaml-ask-ai-history";
 const STARTERS = [
-  "What is running low?",
+  "What is this month's revenue?",
+  "What is the most scarce product?",
+  "What are the best sellers?",
   "What is the dollar rate?",
-  "Which prices increased or decreased?",
-  "Which SKUs have thin margins?",
 ];
 
 function loadHistory(): ChatMessage[] {
@@ -120,7 +120,7 @@ export function AskAiDrawer() {
             <div className="flex-1 space-y-3 overflow-y-auto p-4">
               {messages.length === 0 ? (
                 <div className="space-y-3">
-                  <p className="text-sm text-slate-500">Ask about stock, naira/USD, or a price that went up or down. History stays on this device.</p>
+                  <p className="text-sm text-slate-500">Ask anything about this company: monthly revenue, scarce SKUs, best sellers, dollar rate, unpaid invoices. History stays on this device.</p>
                   <div className="flex flex-wrap gap-2">
                     {STARTERS.map((starter) => (
                       <button
@@ -167,7 +167,7 @@ export function AskAiDrawer() {
                     void send(question);
                   }
                 }}
-                placeholder="Ask about stock, prices, or the dollar rate…"
+                placeholder="Ask about revenue, scarce products, stock, or the dollar rate…"
                 rows={3}
                 disabled={loading}
               />

@@ -2,6 +2,7 @@
 
 import { fail, ok, type ActionResult } from "@/lib/action-result";
 import { answerFromInventory } from "@/lib/ai/assistant";
+import { buildOperationsBrief } from "@/lib/ai/briefing";
 import { completeChat, completeJson, completeText, isAiConfigured, type ChatTurn } from "@/lib/ai/client";
 import { analyzePrice, buildDemandForecast, buildReorderAdvice } from "@/lib/ai/rules";
 import { syncStockAlerts } from "@/lib/alerts";
@@ -300,13 +301,33 @@ export async function askAiAction(
   try {
     const session = await requireBusiness();
     const q = question.trim();
-    if (q.length < 2) return fail("Type a question about stock, prices, or the dollar rate.");
+    if (q.length < 2) return fail("Type a question about the business — stock, sales, prices, or the dollar rate.");
 
     const supabase = await createClient();
-    const [products, inventory, sales, alerts, historyRows, companyUsdNgnRate, liveUsdNgnRate] = await Promise.all([
+    const since = new Date();
+    since.setMonth(since.getMonth() - 6);
+    const sinceDay = since.toISOString().slice(0, 10);
+    const [products, inventory, sales, saleItems, purchases, alerts, historyRows, companyUsdNgnRate, liveUsdNgnRate] = await Promise.all([
       supabase.from("products").select("id, name, sku, cost_price, selling_price, minimum_stock_level, status").eq("business_id", session.businessId).eq("status", "active").limit(150),
       listInventory(session.businessId),
-      supabase.from("sales").select("invoice_number, total, status, sale_date").eq("business_id", session.businessId).order("sale_date", { ascending: false }).limit(15),
+      supabase
+        .from("sales")
+        .select("invoice_number, total, status, sale_date, payment_status, balance, customers(name)")
+        .eq("business_id", session.businessId)
+        .gte("sale_date", sinceDay)
+        .order("sale_date", { ascending: false })
+        .limit(400),
+      supabase
+        .from("sale_items")
+        .select("product_id, quantity, total, products(name, sku), sales!inner(business_id, status, sale_date)")
+        .eq("sales.business_id", session.businessId)
+        .gte("sales.sale_date", sinceDay),
+      supabase
+        .from("purchases")
+        .select("total, status, purchase_date")
+        .eq("business_id", session.businessId)
+        .gte("purchase_date", sinceDay)
+        .limit(200),
       supabase.from("alerts").select("title, severity, is_read").eq("business_id", session.businessId).eq("is_read", false).limit(12),
       supabase
         .from("product_price_history")
@@ -361,20 +382,47 @@ export async function askAiAction(
       }
     }
 
+    const stockRows = inventory.slice(0, 200).map((row) => ({
+      sku: row.products?.sku,
+      name: row.products?.name,
+      warehouse: row.warehouses?.name,
+      available: row.quantity_available,
+      min: row.products?.minimum_stock_level,
+      cost: row.products?.cost_price,
+    }));
+    const briefing = buildOperationsBrief({
+      sales: (sales.data ?? []).map((sale) => ({
+        total: sale.total,
+        status: sale.status,
+        sale_date: sale.sale_date,
+        payment_status: sale.payment_status,
+        balance: sale.balance,
+        customer: (sale.customers as { name?: string } | null)?.name ?? null,
+      })),
+      saleItems: (saleItems.data ?? []).map((item) => {
+        const sale = item.sales as { status?: string; sale_date?: string } | null;
+        const product = item.products as { name?: string; sku?: string } | null;
+        return {
+          name: product?.name,
+          sku: product?.sku,
+          quantity: item.quantity,
+          total: item.total,
+          sale_date: sale?.sale_date,
+          status: sale?.status,
+        };
+      }),
+      stock: stockRows,
+      purchases: purchases.data ?? [],
+    });
     const context = {
       currency: session.business?.currency,
       fx: { companyUsdNgnRate, liveUsdNgnRate },
       recentPriceChanges: recentPriceChanges.slice(0, 12),
       products: products.data ?? [],
-      stock: inventory.slice(0, 120).map((row) => ({
-        sku: row.products?.sku,
-        name: row.products?.name,
-        warehouse: row.warehouses?.name,
-        available: row.quantity_available,
-        min: row.products?.minimum_stock_level,
-      })),
-      recentSales: sales.data ?? [],
+      stock: stockRows,
+      recentSales: (sales.data ?? []).slice(0, 15),
       unreadAlerts: alerts.data ?? [],
+      ...briefing,
     };
 
     const fallback = answerFromInventory(q, context);
@@ -391,7 +439,7 @@ export async function askAiAction(
           },
         ];
         const answer = await completeChat(
-          "You are AAML's staff inventory assistant. Answer from the live data and chat history. Know naira and the USD/NGN company rate plus any live market rate provided. If a price increased or decreased, say so in NGN and USD. Never invent SKUs, invoices, or quantities. Keep answers short and practical.",
+          "You are AAML's staff operations assistant. Answer any practical question from the live briefing: monthly revenue, scarce SKUs (stock vs real sales), best sellers, dead stock, unpaid invoices, purchases, customers, margins, dollar/naira rates, and price moves. Use only provided numbers. If something is missing, say you do not have it. Never invent SKUs or market prices outside this data. Keep answers short and useful.",
           turns,
         );
         if (answer?.trim()) return ok(answer.trim());

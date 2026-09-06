@@ -18,6 +18,21 @@ const ctx: AssistantContext = {
   recentPriceChanges: [
     { name: "Siemens relay", sku: "REL-24", field: "selling price", direction: "increased", from: 10000, to: 12000 },
   ],
+  thisMonthRevenue: 50000,
+  lastMonthRevenue: 20000,
+  thisMonthInvoices: 3,
+  months: [{ month: "2026-09", label: "September 2026", revenue: 50000, invoices: 3 }],
+  scarce: [
+    {
+      name: "Siemens relay",
+      sku: "REL-24",
+      available: 0,
+      sold30: 20,
+      daysOfCover: 0,
+      reason: "Sold in the last 30 days and now out of stock",
+    },
+  ],
+  topSellers: [{ name: "Siemens relay", sku: "REL-24", qty: 20, revenue: 240000 }],
 };
 
 describe("answerFromInventory", () => {
@@ -76,5 +91,18 @@ describe("answerFromInventory", () => {
   it("lists recent price increases and decreases", () => {
     const answer = answerFromInventory("Which prices increased or decreased?", ctx);
     expect(answer).toContain("Siemens relay (REL-24) selling price increased from 10000 to 12000");
+  });
+
+  it("reports monthly revenue", () => {
+    const answer = answerFromInventory("What is this month's revenue?", ctx);
+    expect(answer).toContain("This month: 50000.00 NGN");
+    expect(answer).toContain("Last month: 20000.00 NGN");
+    expect(answer).toContain("September 2026");
+  });
+
+  it("names the most scarce product from real sales", () => {
+    const answer = answerFromInventory("What is the most scarce product in the real market?", ctx);
+    expect(answer).toContain("Siemens relay (REL-24)");
+    expect(answer).toContain("out of stock");
   });
 });
