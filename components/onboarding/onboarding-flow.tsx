@@ -165,10 +165,10 @@ export function OnboardingFlow({
             }, 4);
           }}
         >
-          <h1 className="text-2xl font-semibold">Create your first warehouse</h1>
+          <h1 className="text-2xl font-semibold">Create your first LOCATION</h1>
           <div>
-            <Label>Warehouse name</Label>
-            <Input name="name" defaultValue="Main Warehouse" required />
+            <Label>LOCATION</Label>
+            <Input name="name" defaultValue="ABUJA" required />
           </div>
           <div>
             <Label>Code</Label>
@@ -234,15 +234,15 @@ export function OnboardingFlow({
             }, 6);
           }}
         >
-          <h1 className="text-2xl font-semibold">Add your first product</h1>
+          <h1 className="text-2xl font-semibold">Add your first spare</h1>
           <div>
-            <Label>Product name</Label>
+            <Label>SPARES DESCRIPTION</Label>
             <Input name="name" required />
             <FieldError />
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
-              <Label>Cost price</Label>
+              <Label>UNIT PRICE</Label>
               <Input name="costPrice" type="number" step="5000" min="0" defaultValue="0" />
             </div>
             <div>
@@ -250,7 +250,7 @@ export function OnboardingFlow({
               <Input name="sellingPrice" type="number" step="5000" min="0" defaultValue="0" />
             </div>
             <div>
-              <Label>Minimum stock</Label>
+              <Label>RE-ORDER LEVEL</Label>
               <Input name="minimumStockLevel" type="number" defaultValue="5" />
             </div>
             <div>
@@ -260,7 +260,7 @@ export function OnboardingFlow({
           </div>
           {error ? <p className="text-sm text-rose-600">{error}</p> : null}
           <div className="flex gap-2">
-            <Button loading={loading}>Save product</Button>
+            <Button loading={loading}>Save spare</Button>
             <Button type="button" variant="secondary" onClick={() => setStep(6)}>
               Skip for now
             </Button>

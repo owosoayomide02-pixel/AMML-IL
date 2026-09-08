@@ -59,8 +59,7 @@ export function BulkStockImport({ warehouses }: { warehouses: Array<{ id: string
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-sm text-slate-500">
-            One product per line, or a CSV/Excel with columns such as name, SKU, quantity, cost, selling, category, brand.
-            Example: <code>Siemens 24V relay, REL-24, 50, 8000, 12000, Switchgear</code>
+            One spare per line, or upload the AAML inventory Excel/CSV with MAKE, SPARES DESCRIPTION, PART NUMBER, UNIT PRICE, STOCK LEVEL, RE-ORDER LEVEL.
           </p>
           <Textarea
             rows={8}
@@ -70,7 +69,7 @@ export function BulkStockImport({ warehouses }: { warehouses: Array<{ id: string
           />
           <div className="flex flex-wrap items-end gap-3">
             <div>
-              <Label>Warehouse for quantities</Label>
+              <Label>LOCATION for quantities</Label>
               <Select value={warehouseId} onChange={(event) => setWarehouseId(event.target.value)}>
                 {warehouses.map((warehouse) => (
                   <option key={warehouse.id} value={warehouse.id}>
@@ -135,14 +134,14 @@ export function BulkStockImport({ warehouses }: { warehouses: Array<{ id: string
               <Table>
                 <THead>
                   <tr>
-                    <Th>Name</Th>
-                    <Th>SKU</Th>
+                    <Th>SPARES DESCRIPTION</Th>
+                    <Th>PART NUMBER</Th>
                     <Th>Category</Th>
-                    <Th>Brand</Th>
-                    <Th>Qty</Th>
-                    <Th>Cost</Th>
+                    <Th>MAKE</Th>
+                    <Th>STOCK LEVEL</Th>
+                    <Th>UNIT PRICE</Th>
                     <Th>Selling</Th>
-                    <Th>Min</Th>
+                    <Th>RE-ORDER LEVEL</Th>
                     <Th></Th>
                   </tr>
                 </THead>
@@ -166,7 +165,7 @@ export function BulkStockImport({ warehouses }: { warehouses: Array<{ id: string
                       </Td>
                       <Td className="min-w-64">
                         <DualPriceInput
-                          label="Cost"
+                          label="UNIT PRICE"
                           naira={item.costPrice}
                           onNairaChange={(value) => updateItem(index, "costPrice", String(value))}
                         />
@@ -206,7 +205,7 @@ export function BulkStockImport({ warehouses }: { warehouses: Array<{ id: string
                   return;
                 }
                 toast.success(
-                  `Added ${result.data.created} new SKUs, restocked ${result.data.restocked}${result.data.failed ? `, ${result.data.failed} failed` : ""}.`,
+                  `Added ${result.data.created} new spares, restocked ${result.data.restocked}${result.data.failed ? `, ${result.data.failed} failed` : ""}.`,
                 );
                 router.push("/products");
                 router.refresh();

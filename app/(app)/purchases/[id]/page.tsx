@@ -25,7 +25,7 @@ export default async function PurchaseDetailPage({ params }: { params: Promise<{
     received_quantity: number;
     cost_price: number;
     total: number;
-    products: { name: string; sku: string } | null;
+    products: { name: string; sku: string; brand?: string | null } | null;
     warehouses: { name: string } | null;
   }>;
   const canReceive =
@@ -73,17 +73,21 @@ export default async function PurchaseDetailPage({ params }: { params: Promise<{
         <Table>
           <THead>
             <tr>
-              <Th>Product</Th>
-              <Th>Warehouse</Th>
-              <Th className="text-right">Ordered</Th>
+              <Th>MAKE</Th>
+              <Th>SPARES DESCRIPTION</Th>
+              <Th>PART NUMBER</Th>
+              <Th>LOCATION</Th>
+              <Th className="text-right">STOCK LEVEL</Th>
               <Th className="text-right">Received</Th>
-              <Th className="text-right">Cost</Th>
+              <Th className="text-right">UNIT PRICE</Th>
             </tr>
           </THead>
           <TBody>
             {items.map((item) => (
               <tr key={item.id}>
-                <Td>{item.products?.name}</Td>
+                <Td className="whitespace-nowrap uppercase">{item.products?.brand || "—"}</Td>
+                <Td className="font-medium">{item.products?.name}</Td>
+                <Td className="font-mono text-xs">{item.products?.sku}</Td>
                 <Td>{item.warehouses?.name}</Td>
                 <Td className="text-right">{formatNumber(item.quantity)}</Td>
                 <Td className="text-right">{formatNumber(item.received_quantity)}</Td>

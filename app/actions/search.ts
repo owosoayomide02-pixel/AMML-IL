@@ -13,9 +13,9 @@ export async function searchCatalogAction(query: string) {
   const [products, suppliers, customers, purchases, sales] = await Promise.all([
     supabase
       .from("products")
-      .select("id, name, sku, barcode")
+      .select("id, name, sku, barcode, brand")
       .eq("business_id", session.businessId)
-      .or(`name.ilike.${like},sku.ilike.${like},barcode.ilike.${like}`)
+      .or(`name.ilike.${like},sku.ilike.${like},barcode.ilike.${like},brand.ilike.${like}`)
       .limit(5),
     supabase
       .from("suppliers")
@@ -45,10 +45,10 @@ export async function searchCatalogAction(query: string) {
 
   return [
     ...(products.data ?? []).map((row) => ({
-      type: "Product",
+      type: "Spare",
       id: row.id,
       title: row.name,
-      subtitle: row.sku,
+      subtitle: [row.brand, row.sku].filter(Boolean).join(" · ") || "PART NUMBER",
       href: `/products/${row.id}`,
     })),
     ...(suppliers.data ?? []).map((row) => ({

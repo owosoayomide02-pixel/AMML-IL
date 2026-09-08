@@ -56,8 +56,8 @@ export const onboardingLocationSchema = z.object({
 });
 
 export const warehouseSchema = z.object({
-  name: z.string().min(2, "Enter a warehouse name"),
-  code: z.string().min(1, "Enter a warehouse code").max(20),
+  name: z.string().min(2, "Enter a location name"),
+  code: z.string().min(1, "Enter a location code").max(20),
   address: z.string().optional(),
   description: z.string().optional(),
   status: z.enum(["active", "disabled"]).default("active"),
@@ -111,8 +111,8 @@ export const customerSchema = z.object({
 });
 
 export const stockInSchema = z.object({
-  productId: z.string().uuid("Select a product"),
-  warehouseId: z.string().uuid("Select a warehouse"),
+  productId: z.string().uuid("Select a spare"),
+  warehouseId: z.string().uuid("Select a location"),
   quantity: qty,
   unitCost: money,
   supplierId: z.string().uuid().optional().or(z.literal("")),
@@ -123,8 +123,8 @@ export const stockInSchema = z.object({
 });
 
 export const stockOutSchema = z.object({
-  productId: z.string().uuid("Select a product"),
-  warehouseId: z.string().uuid("Select a warehouse"),
+  productId: z.string().uuid("Select a spare"),
+  warehouseId: z.string().uuid("Select a location"),
   quantity: qty,
   reason: z.string().min(1, "Enter a reason"),
   reference: z.string().optional(),
@@ -134,7 +134,7 @@ export const stockOutSchema = z.object({
 
 export const stockAdjustmentSchema = z.object({
   productId: z.string().uuid(),
-  warehouseId: z.string().uuid("Select a warehouse"),
+  warehouseId: z.string().uuid("Select a location"),
   quantity: qty,
   direction: z.enum(["in", "out"]),
   reason: z.string().min(1, "Enter a reason"),
@@ -194,8 +194,8 @@ export const saleSchema = z.object({
 });
 
 export const transferSchema = z.object({
-  fromWarehouseId: z.string().uuid("Select source warehouse"),
-  toWarehouseId: z.string().uuid("Select destination warehouse"),
+  fromWarehouseId: z.string().uuid("Select source location"),
+  toWarehouseId: z.string().uuid("Select destination location"),
   notes: z.string().optional(),
   items: z
     .array(

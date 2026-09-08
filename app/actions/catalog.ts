@@ -114,7 +114,7 @@ export async function createWarehouseAction(input: unknown): Promise<ActionResul
     return ok(row.id);
   } catch (error) {
     logError("create-warehouse", error);
-    return fail(getErrorMessage(error, "Unable to create warehouse."));
+    return fail(getErrorMessage(error, "Unable to create location."));
   }
 }
 
@@ -147,7 +147,7 @@ export async function updateWarehouseAction(id: string, input: unknown): Promise
     return ok(id);
   } catch (error) {
     logError("update-warehouse", error);
-    return fail(getErrorMessage(error, "Unable to update warehouse."));
+    return fail(getErrorMessage(error, "Unable to update location."));
   }
 }
 

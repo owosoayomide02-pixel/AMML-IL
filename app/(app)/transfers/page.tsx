@@ -24,7 +24,7 @@ export default async function TransfersPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Transfers" description="Move stock between warehouses." />
+      <PageHeader title="Transfers" description="Move stock between LOCATION bins." />
       {canWrite ? (
         <Card>
           <CardHeader>
@@ -33,7 +33,7 @@ export default async function TransfersPage() {
           <CardContent>
             <TransferForm
               warehouses={warehouses.map((w) => ({ id: w.id, name: w.name }))}
-              products={products.map((p) => ({ id: p.id, name: p.name, sku: p.sku }))}
+              products={products.map((p) => ({ id: p.id, name: p.name, sku: p.sku, brand: p.brand }))}
             />
           </CardContent>
         </Card>

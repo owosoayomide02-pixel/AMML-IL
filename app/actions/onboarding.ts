@@ -134,7 +134,7 @@ export async function createOnboardingWarehouseAction(input: unknown): Promise<A
     return ok(warehouse.id);
   } catch (error) {
     logError("onboarding-warehouse", error);
-    return fail(getErrorMessage(error, "Unable to create warehouse."));
+    return fail(getErrorMessage(error, "Unable to create location."));
   }
 }
 

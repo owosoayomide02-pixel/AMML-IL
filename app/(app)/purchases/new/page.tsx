@@ -24,7 +24,7 @@ export default async function NewPurchasePage() {
         <CardContent>
           <PurchaseForm
             currency={session.business.currency}
-            products={products.map((p) => ({ id: p.id, name: p.name, sku: p.sku, costPrice: Number(p.cost_price) }))}
+            products={products.map((p) => ({ id: p.id, name: p.name, sku: p.sku, brand: p.brand, costPrice: Number(p.cost_price) }))}
             warehouses={warehouses.map((w) => ({ id: w.id, name: w.name }))}
             suppliers={suppliers.map((s) => ({ id: s.id, name: s.supplier_name }))}
           />

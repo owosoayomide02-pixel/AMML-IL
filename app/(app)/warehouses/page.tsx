@@ -13,7 +13,7 @@ export default async function WarehousesPage() {
 
   return (
     <div>
-      <PageHeader title="Warehouses" description="Locations that hold stock." />
+      <PageHeader title="Locations" description="Places that hold stock, such as ABUJA." />
       <Card>
         <WarehouseManager warehouses={warehouses} canWrite={can(session.role, "warehouses.write")} />
       </Card>

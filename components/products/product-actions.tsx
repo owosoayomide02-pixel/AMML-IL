@@ -22,7 +22,7 @@ export function ProductActions({ id, archived }: { id: string; archived: boolean
           toast.error(result.error);
           return;
         }
-        toast.success(archived ? "Product restored" : "Product archived");
+        toast.success(archived ? "Spare restored" : "Spare archived");
         router.refresh();
       }}
     >

@@ -30,7 +30,7 @@ export async function listProducts(businessId: string, options?: { includeArchiv
   const supabase = await createClient();
   let query = supabase
     .from("products")
-    .select("*, categories(name), inventory(quantity_on_hand, quantity_available)")
+    .select("*, categories(name), inventory(quantity_on_hand, quantity_available, warehouses(name))")
     .eq("business_id", businessId)
     .order("name");
   if (!options?.includeArchived) query = query.eq("status", "active");
@@ -43,7 +43,11 @@ export async function listProducts(businessId: string, options?: { includeArchiv
   return (data ?? []) as Array<
     Product & {
       categories: { name: string } | null;
-      inventory: Array<{ quantity_on_hand: number; quantity_available: number }>;
+      inventory: Array<{
+        quantity_on_hand: number;
+        quantity_available: number;
+        warehouses: { name: string } | null;
+      }>;
     }
   >;
 }
@@ -127,7 +131,7 @@ export async function listStockTransactions(businessId: string, limit = 50) {
   const supabase = await createClient();
   const { data } = await supabase
     .from("stock_transactions")
-    .select("*, products(name, sku), warehouses(name)")
+    .select("*, products(name, sku, brand), warehouses(name)")
     .eq("business_id", businessId)
     .order("created_at", { ascending: false })
     .limit(limit);
@@ -183,7 +187,7 @@ export async function getSale(businessId: string, id: string) {
   const supabase = await createClient();
   const { data } = await supabase
     .from("sales")
-    .select("*, customers(customer_name), sale_items(*, products(name, sku, unit), warehouses(name))")
+    .select("*, customers(customer_name), sale_items(*, products(name, sku, brand, unit), warehouses(name))")
     .eq("business_id", businessId)
     .eq("id", id)
     .maybeSingle();
@@ -211,7 +215,7 @@ export async function getPurchase(businessId: string, id: string) {
   const supabase = await createClient();
   const { data } = await supabase
     .from("purchases")
-    .select("*, suppliers(supplier_name), purchase_items(*, products(name, sku, unit), warehouses(name))")
+    .select("*, suppliers(supplier_name), purchase_items(*, products(name, sku, brand, unit), warehouses(name))")
     .eq("business_id", businessId)
     .eq("id", id)
     .maybeSingle();
@@ -237,7 +241,7 @@ export async function getTransfer(businessId: string, id: string) {
   const [{ data: transfer }, warehouses] = await Promise.all([
     supabase
       .from("stock_transfers")
-      .select("*, stock_transfer_items(*, products(name, sku, unit))")
+      .select("*, stock_transfer_items(*, products(name, sku, brand, unit))")
       .eq("business_id", businessId)
       .eq("id", id)
       .maybeSingle(),
@@ -266,7 +270,7 @@ export async function getCount(businessId: string, id: string) {
   const supabase = await createClient();
   const { data } = await supabase
     .from("inventory_counts")
-    .select("*, warehouses(name, code), inventory_count_items(*, products(name, sku, unit))")
+    .select("*, warehouses(name, code), inventory_count_items(*, products(name, sku, brand, unit))")
     .eq("business_id", businessId)
     .eq("id", id)
     .maybeSingle();
@@ -352,13 +356,13 @@ export async function getDashboardData(businessId: string) {
   const monthStart = new Date(today.getFullYear(), today.getMonth(), 1).toISOString();
 
   const [products, inventory, sales, purchases, alerts, recentSales, recentTx, monthSales] = await Promise.all([
-    supabase.from("products").select("id, name, sku, cost_price, selling_price, status, minimum_stock_level").eq("business_id", businessId),
+    supabase.from("products").select("id, name, sku, brand, cost_price, selling_price, status, minimum_stock_level").eq("business_id", businessId),
     supabase.from("inventory").select("product_id, quantity_on_hand, quantity_available, products(cost_price, selling_price, minimum_stock_level)").eq("business_id", businessId),
     supabase.from("sales").select("id, total, status, sale_date").eq("business_id", businessId).neq("status", "cancelled"),
     supabase.from("purchases").select("id, total, status").eq("business_id", businessId).in("status", ["draft", "ordered", "partially_received"]),
     supabase.from("alerts").select("id", { count: "exact", head: true }).eq("business_id", businessId).eq("is_read", false),
     supabase.from("sales").select("id, invoice_number, total, status, sale_date, customers(customer_name)").eq("business_id", businessId).order("sale_date", { ascending: false }).limit(6),
-    supabase.from("stock_transactions").select("id, transaction_type, quantity, created_at, products(name)").eq("business_id", businessId).order("created_at", { ascending: false }).limit(8),
+    supabase.from("stock_transactions").select("id, transaction_type, quantity, created_at, products(name, sku, brand)").eq("business_id", businessId).order("created_at", { ascending: false }).limit(8),
     supabase.from("sales").select("sale_date, total, status").eq("business_id", businessId).gte("sale_date", monthStart).neq("status", "cancelled"),
   ]);
 
@@ -375,7 +379,7 @@ export async function getDashboardData(businessId: string) {
 
   let lowStock = 0;
   let outOfStock = 0;
-  const watchList: Array<{ id: string; name: string; sku: string; available: number; minimum: number }> = [];
+  const watchList: Array<{ id: string; name: string; sku: string; brand: string | null; available: number; minimum: number }> = [];
   for (const product of products.data ?? []) {
     if (product.status !== "active") continue;
     const available = stockByProduct.get(product.id) ?? 0;
@@ -383,7 +387,7 @@ export async function getDashboardData(businessId: string) {
     if (available <= 0) outOfStock += 1;
     if (available <= minimum) {
       lowStock += 1;
-      watchList.push({ id: product.id, name: product.name, sku: product.sku, available, minimum });
+      watchList.push({ id: product.id, name: product.name, sku: product.sku, brand: product.brand, available, minimum });
     }
   }
   watchList.sort((a, b) => a.available - b.available);
@@ -431,17 +435,23 @@ export async function getReportData(businessId: string) {
     listProducts(businessId, { includeArchived: false }),
     supabase
       .from("sale_items")
-      .select("quantity, selling_price, cost_price, total, products(name, sku), sales!inner(business_id, status, sale_date)")
+      .select("quantity, selling_price, cost_price, total, products(name, sku, brand), sales!inner(business_id, status, sale_date)")
       .eq("sales.business_id", businessId)
       .neq("sales.status", "cancelled")
       .gte("sales.sale_date", sinceIso.slice(0, 10)),
   ]);
 
-  const velocity = new Map<string, { name: string; sku: string; qty: number; revenue: number }>();
+  const velocity = new Map<string, { name: string; sku: string; brand: string; qty: number; revenue: number }>();
   for (const item of saleItems.data ?? []) {
-    const product = item.products as { name?: string; sku?: string } | null;
+    const product = item.products as { name?: string; sku?: string; brand?: string | null } | null;
     const key = product?.sku || product?.name || "unknown";
-    const current = velocity.get(key) ?? { name: product?.name ?? "Unknown", sku: product?.sku ?? "", qty: 0, revenue: 0 };
+    const current = velocity.get(key) ?? {
+      name: product?.name ?? "Unknown",
+      sku: product?.sku ?? "",
+      brand: product?.brand ?? "",
+      qty: 0,
+      revenue: 0,
+    };
     current.qty += toNumber(item.quantity);
     current.revenue += toNumber(item.total);
     velocity.set(key, current);

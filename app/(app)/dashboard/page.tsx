@@ -8,6 +8,7 @@ import { Table, TBody, Td, Th, THead } from "@/components/ui/table";
 import { syncStockAlerts } from "@/lib/alerts";
 import { getDashboardData } from "@/lib/queries";
 import { requirePageAccess } from "@/lib/session";
+import { formatSpareOption } from "@/lib/stock-sheet";
 import { humanizeStatus, statusVariant } from "@/lib/status";
 import { formatCurrency, formatDate, formatNumber } from "@/lib/utils";
 import { AlertTriangle, Bell, Boxes, Package, ShoppingCart, Truck } from "lucide-react";
@@ -30,9 +31,9 @@ export default async function DashboardPage() {
       />
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        <StatCard title="Active SKUs" value={formatNumber(data.skuCount, 0)} icon={<Package className="h-5 w-5" />} />
+        <StatCard title="Active spares" value={formatNumber(data.skuCount, 0)} icon={<Package className="h-5 w-5" />} />
         <StatCard
-          title="Stock value (cost)"
+          title="Total inventory price"
           value={formatCurrency(data.onHandValue, currency)}
           hint={`Retail ${formatCurrency(data.retailValue, currency)}`}
           icon={<Boxes className="h-5 w-5" />}
@@ -70,36 +71,39 @@ export default async function DashboardPage() {
         <CardContent>
           {data.skuCount === 0 ? (
             <p className="text-sm text-slate-500">
-              Add products and receive stock to see company status. Low-stock and out-of-stock items appear here automatically.
+              Add spares and receive stock to see company status. Low-stock and out-of-stock items appear here automatically.
             </p>
           ) : data.watchList.length === 0 ? (
             <p className="text-sm text-slate-500">
-              All {formatNumber(data.skuCount, 0)} active SKUs are at or above their minimum. No stock alerts right now.
+              All {formatNumber(data.skuCount, 0)} active spares are at or above their re-order level. No stock alerts right now.
             </p>
           ) : (
             <Table>
               <THead>
                 <tr>
-                  <Th>Product</Th>
-                  <Th className="text-right">Available</Th>
-                  <Th className="text-right">Minimum</Th>
-                  <Th>Status</Th>
+                  <Th>MAKE</Th>
+                  <Th>SPARES DESCRIPTION</Th>
+                  <Th>PART NUMBER</Th>
+                  <Th className="text-right">STOCK LEVEL</Th>
+                  <Th className="text-right">RE-ORDER LEVEL</Th>
+                  <Th>STOCK STATUS</Th>
                 </tr>
               </THead>
               <TBody>
                 {data.watchList.map((item) => (
                   <tr key={item.id}>
+                    <Td className="whitespace-nowrap uppercase">{item.brand || "—"}</Td>
                     <Td>
                       <Link href={`/products/${item.id}`} className="font-medium text-brand-600 hover:underline">
                         {item.name}
                       </Link>
-                      <p className="font-mono text-xs text-slate-500">{item.sku}</p>
                     </Td>
+                    <Td className="font-mono text-xs">{item.sku}</Td>
                     <Td className="text-right">{formatNumber(item.available)}</Td>
                     <Td className="text-right">{formatNumber(item.minimum)}</Td>
                     <Td>
                       <Badge variant={item.available <= 0 ? "danger" : "warning"}>
-                        {item.available <= 0 ? "Out of stock" : "Low stock"}
+                        {item.available <= 0 ? "Out of Stock" : "Reorder needed"}
                       </Badge>
                     </Td>
                   </tr>
@@ -143,7 +147,7 @@ export default async function DashboardPage() {
               data.recentTransactions.map((tx) => (
                 <div key={tx.id} className="flex items-center justify-between text-sm">
                   <div>
-                    <p className="font-medium">{(tx.products as { name?: string } | null)?.name ?? "Product"}</p>
+                    <p className="font-medium">{formatSpareOption((tx.products as { name?: string; sku?: string; brand?: string } | null) ?? {})}</p>
                     <p className="text-xs text-slate-500">{humanizeStatus(tx.transaction_type)}</p>
                   </div>
                   <span className="tabular-nums">{formatNumber(tx.quantity)}</span>

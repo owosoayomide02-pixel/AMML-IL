@@ -28,6 +28,7 @@ export default async function NewSalePage() {
               id: p.id,
               name: p.name,
               sku: p.sku,
+              brand: p.brand,
               sellingPrice: Number(p.selling_price),
             }))}
             warehouses={warehouses.map((w) => ({ id: w.id, name: w.name }))}

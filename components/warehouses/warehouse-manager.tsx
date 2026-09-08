@@ -37,7 +37,7 @@ export function WarehouseManager({ warehouses, canWrite }: { warehouses: Warehou
               toast.error(result.error);
               return;
             }
-            toast.success(editing ? "Warehouse updated" : "Warehouse created");
+            toast.success(editing ? "Location updated" : "Location created");
             form.reset({ name: "", code: "", address: "", description: "", status: "active" });
             setEditing(null);
             router.refresh();
@@ -71,7 +71,7 @@ export function WarehouseManager({ warehouses, canWrite }: { warehouses: Warehou
             </div>
           </FormGrid>
           <div className="mt-4 flex gap-2">
-            <Button loading={form.formState.isSubmitting}>{editing ? "Save warehouse" : "Add warehouse"}</Button>
+            <Button loading={form.formState.isSubmitting}>{editing ? "Save location" : "Add location"}</Button>
             {editing ? (
               <Button
                 type="button"
@@ -89,7 +89,7 @@ export function WarehouseManager({ warehouses, canWrite }: { warehouses: Warehou
       ) : null}
 
       {warehouses.length === 0 ? (
-        <EmptyState title="No warehouses" description="Add a warehouse or store location to hold inventory." />
+        <EmptyState title="No locations" description="Add a store location to hold spare-parts stock." />
       ) : (
         <Table>
           <THead>

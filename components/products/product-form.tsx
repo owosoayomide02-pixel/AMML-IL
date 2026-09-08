@@ -11,6 +11,7 @@ import { DEFAULT_USD_NGN_RATE } from "@/lib/money";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { appConfig } from "@/lib/config";
+import { STOCK_SHEET_LABELS } from "@/lib/stock-sheet";
 import { productSchema } from "@/schemas";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
@@ -86,27 +87,27 @@ export function ProductForm({
           setError(result.error);
           return;
         }
-        toast.success(productId ? "Product updated" : "Product created");
+        toast.success(productId ? "Spare updated" : "Spare created");
         router.push(`/products/${result.data}`);
         router.refresh();
       })}
     >
       <FormGrid>
         <div className="md:col-span-2">
-          <Label>Spares description</Label>
+          <Label>{STOCK_SHEET_LABELS.description}</Label>
           <Input {...form.register("name")} />
           <FieldError message={form.formState.errors.name?.message} />
         </div>
         <div>
-          <Label>Item ID</Label>
+          <Label>{STOCK_SHEET_LABELS.itemId}</Label>
           <Input {...form.register("itemCode")} placeholder="Leave blank to number automatically" />
         </div>
         <div>
-          <Label>Make</Label>
+          <Label>{STOCK_SHEET_LABELS.make}</Label>
           <Input {...form.register("brand")} placeholder="SIEMENS, PILZ, EATON..." />
         </div>
         <div>
-          <Label>Part number</Label>
+          <Label>{STOCK_SHEET_LABELS.partNumber}</Label>
           <Input {...form.register("sku")} placeholder="Leave blank to generate" />
         </div>
         <div>
@@ -142,7 +143,7 @@ export function ProductForm({
           <Input {...form.register("unit")} />
         </div>
         <div>
-          <Label>Condition</Label>
+          <Label>{STOCK_SHEET_LABELS.condition}</Label>
           <Select {...form.register("condition")}>
             <option value="NEW">NEW</option>
             <option value="USED">USED</option>
@@ -150,7 +151,7 @@ export function ProductForm({
           </Select>
         </div>
         <div>
-          <Label>Rack number</Label>
+          <Label>{STOCK_SHEET_LABELS.rackNumber}</Label>
           <Input {...form.register("rackNumber")} />
         </div>
         <div>
@@ -159,7 +160,7 @@ export function ProductForm({
         </div>
         <div>
           <DualPriceInput
-            label="Unit price"
+            label={STOCK_SHEET_LABELS.unitPrice}
             name="costPrice"
             naira={Number(form.watch("costPrice") || 0)}
             onNairaChange={(value) => form.setValue("costPrice", value, { shouldValidate: true })}
@@ -177,7 +178,7 @@ export function ProductForm({
           />
         </div>
         <div>
-          <Label>Re-order level</Label>
+          <Label>{STOCK_SHEET_LABELS.reorderLevel}</Label>
           <Input type="number" step="0.01" {...form.register("minimumStockLevel")} />
         </div>
         <div>
@@ -185,11 +186,11 @@ export function ProductForm({
           <Input type="number" step="0.01" {...form.register("reorderQuantity")} />
         </div>
         <div>
-          <Label>Order status</Label>
+          <Label>{STOCK_SHEET_LABELS.orderStatus}</Label>
           <Input {...form.register("orderStatus")} placeholder="Ordered, pending, on the way..." />
         </div>
         <div className="md:col-span-2">
-          <Label>Remarks</Label>
+          <Label>{STOCK_SHEET_LABELS.remarks}</Label>
           <Textarea {...form.register("remarks")} placeholder="Stock Good, Reorder needed, or a custom note" />
         </div>
         <div className="md:col-span-2">
@@ -198,7 +199,7 @@ export function ProductForm({
         </div>
       </FormGrid>
       {error ? <p className="text-sm text-rose-600">{error}</p> : null}
-      <Button loading={form.formState.isSubmitting}>{productId ? "Save changes" : "Create product"}</Button>
+      <Button loading={form.formState.isSubmitting}>{productId ? "Save changes" : "Create spare"}</Button>
     </form>
   );
 }

@@ -26,7 +26,7 @@ export function CountForm({
     counted_quantity: number | null;
     variance: number | null;
     reason: string | null;
-    products: { name: string; sku: string; unit: string } | null;
+    products: { name: string; sku: string; brand?: string | null; unit: string } | null;
   }>;
 }) {
   const router = useRouter();
@@ -45,19 +45,20 @@ export function CountForm({
       <Table>
         <THead>
           <tr>
-            <Th>Product</Th>
-            <Th className="text-right">System</Th>
+            <Th>MAKE</Th>
+            <Th>SPARES DESCRIPTION</Th>
+            <Th>PART NUMBER</Th>
+            <Th className="text-right">STOCK LEVEL</Th>
             <Th className="text-right">Counted</Th>
-            <Th>Reason</Th>
+            <Th>REMARKS</Th>
           </tr>
         </THead>
         <TBody>
           {items.map((item, index) => (
             <tr key={item.id}>
-              <Td>
-                {item.products?.name}
-                <p className="font-mono text-xs text-slate-500">{item.products?.sku}</p>
-              </Td>
+              <Td className="whitespace-nowrap uppercase">{item.products?.brand || "—"}</Td>
+              <Td className="font-medium">{item.products?.name}</Td>
+              <Td className="font-mono text-xs">{item.products?.sku}</Td>
               <Td className="text-right">{formatNumber(item.system_quantity)}</Td>
               <Td>
                 <Input

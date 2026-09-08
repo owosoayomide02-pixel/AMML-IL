@@ -50,7 +50,7 @@ export function GlobalSearch() {
       <Input
         value={query}
         onChange={(e) => setQuery(e.target.value)}
-        placeholder="Search products, SKU, barcode, invoices..."
+        placeholder="Search MAKE, PART NUMBER, invoices..."
         className="pl-9"
         onFocus={() => hits.length > 0 && setOpen(true)}
       />

@@ -30,7 +30,7 @@ export default async function StockInPage() {
     <div className="space-y-6">
       <PageHeader
         title="Stock in"
-        description="Receive inventory into a warehouse."
+        description="Receive inventory into a LOCATION."
         actions={
           <Button asChild variant="secondary">
             <Link href="/products/import">Add many at once</Link>
@@ -43,7 +43,7 @@ export default async function StockInPage() {
         </CardHeader>
         <CardContent>
           <StockInForm
-            products={products.map((p) => ({ id: p.id, name: p.name, sku: p.sku }))}
+            products={products.map((p) => ({ id: p.id, name: p.name, sku: p.sku, brand: p.brand }))}
             warehouses={warehouses.map((w) => ({ id: w.id, name: w.name }))}
             suppliers={suppliers.map((s) => ({ id: s.id, name: s.supplier_name }))}
           />
@@ -57,16 +57,22 @@ export default async function StockInPage() {
           <THead>
             <tr>
               <Th>When</Th>
-              <Th>Product</Th>
+              <Th>MAKE</Th>
+              <Th>SPARES DESCRIPTION</Th>
+              <Th>PART NUMBER</Th>
+              <Th>LOCATION</Th>
               <Th>Type</Th>
-              <Th className="text-right">Qty</Th>
+              <Th className="text-right">STOCK LEVEL</Th>
             </tr>
           </THead>
           <TBody>
             {inbound.map((tx) => (
               <tr key={tx.id}>
                 <Td>{formatDateTime(tx.created_at)}</Td>
+                <Td className="whitespace-nowrap uppercase">{(tx.products as { brand?: string } | null)?.brand || "—"}</Td>
                 <Td>{(tx.products as { name?: string } | null)?.name ?? "—"}</Td>
+                <Td className="font-mono text-xs">{(tx.products as { sku?: string } | null)?.sku ?? "—"}</Td>
+                <Td>{(tx.warehouses as { name?: string } | null)?.name ?? "—"}</Td>
                 <Td>
                   <Badge variant={statusVariant("info")}>{humanizeStatus(tx.transaction_type)}</Badge>
                 </Td>

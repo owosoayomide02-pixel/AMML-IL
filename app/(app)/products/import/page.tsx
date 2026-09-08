@@ -13,10 +13,10 @@ export default async function BulkImportPage() {
     <div>
       <PageHeader
         title="Add stock in bulk"
-        description="Paste a list or upload Excel/CSV. AI sorts names, categories, and SKUs, then you save everything at once."
+        description="Paste a list or upload the AAML Excel sheet (MAKE, SPARES DESCRIPTION, PART NUMBER, STOCK LEVEL)."
       />
       {warehouses.length === 0 ? (
-        <p className="text-sm text-slate-500">Create a warehouse first, then come back to import stock.</p>
+        <p className="text-sm text-slate-500">Create a LOCATION first, then come back to import stock.</p>
       ) : (
         <BulkStockImport warehouses={warehouses.map((warehouse) => ({ id: warehouse.id, name: warehouse.name }))} />
       )}

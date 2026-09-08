@@ -69,7 +69,7 @@ export function BarcodeLookup({
         return;
       }
       if (!onCode) {
-        toast.error("No product found for that barcode or SKU.");
+        toast.error("No spare found for that barcode or PART NUMBER.");
         return;
       }
     }

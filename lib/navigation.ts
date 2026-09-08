@@ -42,7 +42,7 @@ export const navigation: NavSection[] = [
   {
     title: "Inventory",
     items: [
-      { href: "/products", label: "Products", icon: Package, permission: "products.read" },
+      { href: "/products", label: "Spares", icon: Package, permission: "products.read" },
       { href: "/products/import", label: "Bulk add stock", icon: PackagePlus, permission: "products.write" },
       { href: "/categories", label: "Categories", icon: Tags, permission: "categories.read" },
       { href: "/inventory", label: "Stock Overview", icon: Boxes, permission: "inventory.read" },
@@ -71,7 +71,7 @@ export const navigation: NavSection[] = [
   {
     title: "Operations",
     items: [
-      { href: "/warehouses", label: "Warehouses", icon: Warehouse, permission: "warehouses.read" },
+      { href: "/warehouses", label: "Locations", icon: Warehouse, permission: "warehouses.read" },
       { href: "/reports", label: "Reports", icon: BarChart3, permission: "reports.read" },
       { href: "/alerts", label: "Alerts", icon: Bell, permission: "alerts.read" },
     ],

@@ -32,7 +32,7 @@ export function StartCountForm({ warehouses }: { warehouses: Array<{ id: string;
       }}
     >
       <div className="min-w-56 flex-1">
-        <Label>Warehouse</Label>
+        <Label>LOCATION</Label>
         <Select value={warehouseId} onChange={(event) => setWarehouseId(event.target.value)}>
           {warehouses.map((warehouse) => (
             <option key={warehouse.id} value={warehouse.id}>

@@ -10,6 +10,7 @@ import { can } from "@/lib/permissions";
 import { formatNgnUsd } from "@/lib/money";
 import { getProduct, getUsdNgnRate, listCategories } from "@/lib/queries";
 import { requirePageAccess } from "@/lib/session";
+import { STOCK_SHEET_LABELS } from "@/lib/stock-sheet";
 import { humanizeStatus, statusVariant } from "@/lib/status";
 import { formatNumber, toNumber } from "@/lib/utils";
 import { notFound } from "next/navigation";
@@ -31,7 +32,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
     <div className="space-y-6">
       <PageHeader
         title={product.name}
-        description={`${product.sku}${product.barcode ? ` · ${product.barcode}` : ""}`}
+        description={[product.brand, product.sku, product.item_code && `Item ID ${product.item_code}`].filter(Boolean).join(" · ")}
         actions={
           canWrite ? (
             <ProductActions id={product.id} archived={product.status === "archived"} />
@@ -76,20 +77,44 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
             ) : (
               <dl className="grid gap-3 text-sm md:grid-cols-2">
                 <div>
-                  <dt className="text-slate-500">Category</dt>
-                  <dd>{product.categories?.name ?? "—"}</dd>
+                  <dt className="text-slate-500">{STOCK_SHEET_LABELS.itemId}</dt>
+                  <dd>{product.item_code || "—"}</dd>
                 </div>
                 <div>
-                  <dt className="text-slate-500">Unit</dt>
-                  <dd>{product.unit}</dd>
+                  <dt className="text-slate-500">{STOCK_SHEET_LABELS.make}</dt>
+                  <dd>{product.brand || "—"}</dd>
                 </div>
                 <div>
-                  <dt className="text-slate-500">Cost</dt>
+                  <dt className="text-slate-500">{STOCK_SHEET_LABELS.description}</dt>
+                  <dd>{product.name}</dd>
+                </div>
+                <div>
+                  <dt className="text-slate-500">{STOCK_SHEET_LABELS.partNumber}</dt>
+                  <dd>{product.sku}</dd>
+                </div>
+                <div>
+                  <dt className="text-slate-500">{STOCK_SHEET_LABELS.unitPrice}</dt>
                   <dd>{formatNgnUsd(product.cost_price, usdNgnRate)}</dd>
                 </div>
                 <div>
-                  <dt className="text-slate-500">Selling</dt>
-                  <dd>{formatNgnUsd(product.selling_price, usdNgnRate)}</dd>
+                  <dt className="text-slate-500">{STOCK_SHEET_LABELS.condition}</dt>
+                  <dd>{product.condition || "NEW"}</dd>
+                </div>
+                <div>
+                  <dt className="text-slate-500">{STOCK_SHEET_LABELS.rackNumber}</dt>
+                  <dd>{product.rack_number || "—"}</dd>
+                </div>
+                <div>
+                  <dt className="text-slate-500">{STOCK_SHEET_LABELS.reorderLevel}</dt>
+                  <dd>{formatNumber(product.minimum_stock_level)}</dd>
+                </div>
+                <div>
+                  <dt className="text-slate-500">{STOCK_SHEET_LABELS.remarks}</dt>
+                  <dd>{product.remarks || "—"}</dd>
+                </div>
+                <div>
+                  <dt className="text-slate-500">{STOCK_SHEET_LABELS.orderStatus}</dt>
+                  <dd>{product.order_status || "—"}</dd>
                 </div>
               </dl>
             )}
@@ -99,13 +124,13 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
           <PriceInsights productId={product.id} />
           <Card>
             <CardHeader>
-              <CardTitle>Warehouse stock</CardTitle>
+              <CardTitle>{STOCK_SHEET_LABELS.location} stock</CardTitle>
             </CardHeader>
             <Table>
               <THead>
                 <tr>
-                  <Th>Warehouse</Th>
-                  <Th className="text-right">On hand</Th>
+                  <Th>{STOCK_SHEET_LABELS.location}</Th>
+                  <Th className="text-right">{STOCK_SHEET_LABELS.stockLevel}</Th>
                   <Th className="text-right">Available</Th>
                 </tr>
               </THead>
@@ -119,7 +144,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
                 ) : (
                   product.inventory.map((row) => (
                     <tr key={row.id}>
-                      <Td>{row.warehouses?.name ?? "Warehouse"}</Td>
+                      <Td>{row.warehouses?.name ?? "Location"}</Td>
                       <Td className="text-right">{formatNumber(row.quantity_on_hand)}</Td>
                       <Td className="text-right">{formatNumber(row.quantity_available)}</Td>
                     </tr>

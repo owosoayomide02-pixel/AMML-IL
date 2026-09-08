@@ -40,7 +40,7 @@ export function PriceInsights({ productId }: { productId: string }) {
                 ))}
               </ul>
             ) : (
-              <p className="text-slate-500">No price warnings on this SKU.</p>
+              <p className="text-slate-500">No price warnings on this PART NUMBER.</p>
             )}
             {insight.commentary ? <p className="text-slate-600 dark:text-slate-300">{insight.commentary}</p> : null}
             {insight.history.length > 1 ? (

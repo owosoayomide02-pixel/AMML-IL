@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { formatCurrency } from "@/lib/utils";
+import { formatSpareOption } from "@/lib/stock-sheet";
 import { purchaseSchema } from "@/schemas";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Plus, Trash2 } from "lucide-react";
@@ -21,7 +22,7 @@ export function PurchaseForm({
   suppliers,
   currency,
 }: {
-  products: Array<{ id: string; name: string; sku: string; costPrice: number }>;
+  products: Array<{ id: string; name: string; sku: string; brand?: string | null; costPrice: number }>;
   warehouses: Array<{ id: string; name: string }>;
   suppliers: Array<{ id: string; name: string }>;
   currency: string;
@@ -126,7 +127,7 @@ export function PurchaseForm({
         {items.fields.map((field, index) => (
           <div key={field.id} className="grid gap-3 rounded-xl border border-slate-200 p-3 md:grid-cols-6 dark:border-slate-800">
             <div className="md:col-span-2">
-              <Label>Product</Label>
+              <Label>SPARES DESCRIPTION</Label>
               <Select
                 {...form.register(`items.${index}.productId`, {
                   onChange: (event) => {
@@ -135,16 +136,16 @@ export function PurchaseForm({
                   },
                 })}
               >
-                <option value="">Select</option>
+                <option value="">Select spare</option>
                 {products.map((product) => (
                   <option key={product.id} value={product.id}>
-                    {product.name}
+                    {formatSpareOption(product)}
                   </option>
                 ))}
               </Select>
             </div>
             <div>
-              <Label>Warehouse</Label>
+              <Label>LOCATION</Label>
               <Select {...form.register(`items.${index}.warehouseId`)}>
                 {warehouses.map((warehouse) => (
                   <option key={warehouse.id} value={warehouse.id}>
@@ -154,11 +155,11 @@ export function PurchaseForm({
               </Select>
             </div>
             <div>
-              <Label>Qty</Label>
+              <Label>STOCK LEVEL</Label>
               <Input type="number" step="0.01" {...form.register(`items.${index}.quantity`)} />
             </div>
             <div>
-              <Label>Cost</Label>
+              <Label>UNIT PRICE</Label>
               <Input type="number" step="5000" min="0" {...form.register(`items.${index}.costPrice`)} />
             </div>
             <div className="flex items-end">

@@ -25,7 +25,7 @@ export default async function SaleDetailPage({ params }: { params: Promise<{ id:
     discount: number;
     tax: number;
     total: number;
-    products: { name: string; sku: string; unit: string } | null;
+    products: { name: string; sku: string; brand?: string | null; unit: string } | null;
     warehouses: { name: string } | null;
   }>;
 
@@ -68,20 +68,21 @@ export default async function SaleDetailPage({ params }: { params: Promise<{ id:
         <Table>
           <THead>
             <tr>
-              <Th>Product</Th>
-              <Th>Warehouse</Th>
-              <Th className="text-right">Qty</Th>
-              <Th className="text-right">Price</Th>
-              <Th className="text-right">Total</Th>
+              <Th>MAKE</Th>
+              <Th>SPARES DESCRIPTION</Th>
+              <Th>PART NUMBER</Th>
+              <Th>LOCATION</Th>
+              <Th className="text-right">STOCK LEVEL</Th>
+              <Th className="text-right">UNIT PRICE</Th>
+              <Th className="text-right">TOTAL INVENTORY PRICE</Th>
             </tr>
           </THead>
           <TBody>
             {items.map((item) => (
               <tr key={item.id}>
-                <Td>
-                  {item.products?.name}
-                  <p className="font-mono text-xs text-slate-500">{item.products?.sku}</p>
-                </Td>
+                <Td className="whitespace-nowrap uppercase">{item.products?.brand || "—"}</Td>
+                <Td className="font-medium">{item.products?.name}</Td>
+                <Td className="font-mono text-xs">{item.products?.sku}</Td>
                 <Td>{item.warehouses?.name}</Td>
                 <Td className="text-right">{formatNumber(item.quantity)}</Td>
                 <Td className="text-right">{formatCurrency(item.selling_price, currency)}</Td>

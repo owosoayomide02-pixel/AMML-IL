@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { DualPriceInput } from "@/components/ui/dual-price-input";
+import { formatSpareOption } from "@/lib/stock-sheet";
 import { stockInSchema } from "@/schemas";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
@@ -20,7 +21,7 @@ export function StockInForm({
   warehouses,
   suppliers,
 }: {
-  products: Array<{ id: string; name: string; sku: string }>;
+  products: Array<{ id: string; name: string; sku: string; brand?: string | null }>;
   warehouses: Array<{ id: string; name: string }>;
   suppliers: Array<{ id: string; name: string }>;
 }) {
@@ -56,13 +57,13 @@ export function StockInForm({
     >
       <FormGrid>
         <div>
-          <Label>Product</Label>
+          <Label>SPARES DESCRIPTION</Label>
           <div className="flex gap-2">
             <Select className="flex-1" {...form.register("productId")}>
-              <option value="">Select product</option>
+              <option value="">Select spare</option>
               {products.map((product) => (
                 <option key={product.id} value={product.id}>
-                  {product.name} ({product.sku})
+                  {formatSpareOption(product)}
                 </option>
               ))}
             </Select>
@@ -77,7 +78,7 @@ export function StockInForm({
           <FieldError message={form.formState.errors.productId?.message} />
         </div>
         <div>
-          <Label>Warehouse</Label>
+          <Label>LOCATION</Label>
           <Select {...form.register("warehouseId")}>
             {warehouses.map((warehouse) => (
               <option key={warehouse.id} value={warehouse.id}>
@@ -87,13 +88,13 @@ export function StockInForm({
           </Select>
         </div>
         <div>
-          <Label>Quantity</Label>
+          <Label>STOCK LEVEL</Label>
           <Input type="number" step="0.01" {...form.register("quantity")} />
           <FieldError message={form.formState.errors.quantity?.message} />
         </div>
         <div>
           <DualPriceInput
-            label="Unit cost"
+            label="UNIT PRICE"
             naira={Number(form.watch("unitCost") || 0)}
             onNairaChange={(value) => form.setValue("unitCost", value, { shouldValidate: true })}
           />

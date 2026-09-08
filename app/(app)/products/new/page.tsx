@@ -15,10 +15,10 @@ export default async function NewProductPage() {
 
   return (
     <div>
-      <PageHeader title="New product" description="Add a SKU to the catalog." />
+      <PageHeader title="New spare" description="Add a spare to the AAML stock register." />
       <Card>
         <CardHeader>
-          <CardTitle>Product details</CardTitle>
+          <CardTitle>Spare details</CardTitle>
         </CardHeader>
         <CardContent>
           <ProductForm categories={categories} usdNgnRate={usdNgnRate} />

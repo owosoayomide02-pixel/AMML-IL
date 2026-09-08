@@ -9,7 +9,7 @@ export async function syncStockAlerts(businessId: string) {
   const [{ data: products }, { data: inventory }] = await Promise.all([
     supabase
       .from("products")
-      .select("id, name, sku, minimum_stock_level, status")
+      .select("id, name, sku, brand, minimum_stock_level, status")
       .eq("business_id", businessId)
       .eq("status", "active"),
     supabase.from("inventory").select("product_id, quantity_available").eq("business_id", businessId),
@@ -41,20 +41,20 @@ export async function syncStockAlerts(businessId: string) {
             type: "out_of_stock",
             severity: "critical" as const,
             title: "Out of Stock",
-            message: `${product.name} (${product.sku}) is out of stock.`,
+            message: `${[product.brand, product.name].filter(Boolean).join(" · ")} (${product.sku}) is out of stock.`,
           }
         : available <= minimum * 0.5
           ? {
               type: "critical_stock",
               severity: "critical" as const,
               title: "Critical Stock",
-              message: `${product.name} (${product.sku}) is critically low at ${available}.`,
+              message: `${[product.brand, product.name].filter(Boolean).join(" · ")} (${product.sku}) is critically low at ${available}.`,
             }
           : {
               type: "low_stock",
               severity: "warning" as const,
               title: "Low Stock",
-              message: `${product.name} (${product.sku}) is at or below the minimum level (${available} available, minimum ${minimum}).`,
+              message: `${[product.brand, product.name].filter(Boolean).join(" · ")} (${product.sku}) is at or below the re-order level (${available} stock, re-order ${minimum}).`,
             };
 
     const { data: existing } = await supabase

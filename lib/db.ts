@@ -71,10 +71,10 @@ export function mapDbError(message: string) {
     return "A spare with this Item ID already exists.";
   }
   if (/duplicate key/i.test(message) && /sku/i.test(message)) {
-    return "A product with this SKU already exists.";
+    return "A spare with this PART NUMBER already exists.";
   }
   if (/duplicate key/i.test(message) && /barcode/i.test(message)) {
-    return "A product with this barcode already exists.";
+    return "A spare with this barcode already exists.";
   }
   if (/duplicate key/i.test(message) && /purchase_number/i.test(message)) {
     return "This purchase number is already in use.";

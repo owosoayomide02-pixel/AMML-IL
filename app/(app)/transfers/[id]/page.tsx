@@ -21,7 +21,7 @@ export default async function TransferDetailPage({ params }: { params: Promise<{
   const items = (transfer.stock_transfer_items ?? []) as Array<{
     id: string;
     quantity: number;
-    products: { name: string; sku: string; unit: string } | null;
+    products: { name: string; sku: string; brand?: string | null; unit: string } | null;
   }>;
 
   return (
@@ -45,17 +45,18 @@ export default async function TransferDetailPage({ params }: { params: Promise<{
         <Table>
           <THead>
             <tr>
-              <Th>Product</Th>
-              <Th className="text-right">Quantity</Th>
+              <Th>MAKE</Th>
+              <Th>SPARES DESCRIPTION</Th>
+              <Th>PART NUMBER</Th>
+              <Th className="text-right">STOCK LEVEL</Th>
             </tr>
           </THead>
           <TBody>
             {items.map((item) => (
               <tr key={item.id}>
-                <Td>
-                  {item.products?.name}
-                  <p className="font-mono text-xs text-slate-500">{item.products?.sku}</p>
-                </Td>
+                <Td className="whitespace-nowrap uppercase">{item.products?.brand || "—"}</Td>
+                <Td className="font-medium">{item.products?.name}</Td>
+                <Td className="font-mono text-xs">{item.products?.sku}</Td>
                 <Td className="text-right">{formatNumber(item.quantity)}</Td>
               </tr>
             ))}

@@ -205,7 +205,7 @@ export function SettingsForms({
             <fieldset disabled={!canWrite} className="space-y-4">
               <FormGrid>
                 <div>
-                  <Label>Default warehouse</Label>
+                  <Label>Default LOCATION</Label>
                   <Select {...inventoryForm.register("defaultWarehouseId")}>
                     <option value="">None</option>
                     {warehouses.map((warehouse) => (
@@ -220,7 +220,7 @@ export function SettingsForms({
                   <Input {...inventoryForm.register("defaultUnit")} />
                 </div>
                 <div>
-                  <Label>SKU prefix</Label>
+                  <Label>PART NUMBER prefix</Label>
                   <Input {...inventoryForm.register("skuPrefix")} />
                 </div>
                 <div>

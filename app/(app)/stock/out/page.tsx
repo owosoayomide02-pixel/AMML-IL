@@ -23,14 +23,14 @@ export default async function StockOutPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Stock out" description="Issue, damage, or expire inventory from a warehouse." />
+      <PageHeader title="Stock out" description="Issue, damage, or expire inventory from a LOCATION." />
       <Card>
         <CardHeader>
           <CardTitle>Record outbound stock</CardTitle>
         </CardHeader>
         <CardContent>
           <StockOutForm
-            products={products.map((p) => ({ id: p.id, name: p.name, sku: p.sku }))}
+            products={products.map((p) => ({ id: p.id, name: p.name, sku: p.sku, brand: p.brand }))}
             warehouses={warehouses.map((w) => ({ id: w.id, name: w.name }))}
           />
         </CardContent>
@@ -43,16 +43,22 @@ export default async function StockOutPage() {
           <THead>
             <tr>
               <Th>When</Th>
-              <Th>Product</Th>
+              <Th>MAKE</Th>
+              <Th>SPARES DESCRIPTION</Th>
+              <Th>PART NUMBER</Th>
+              <Th>LOCATION</Th>
               <Th>Type</Th>
-              <Th className="text-right">Qty</Th>
+              <Th className="text-right">STOCK LEVEL</Th>
             </tr>
           </THead>
           <TBody>
             {outbound.map((tx) => (
               <tr key={tx.id}>
                 <Td>{formatDateTime(tx.created_at)}</Td>
+                <Td className="whitespace-nowrap uppercase">{(tx.products as { brand?: string } | null)?.brand || "—"}</Td>
                 <Td>{(tx.products as { name?: string } | null)?.name ?? "—"}</Td>
+                <Td className="font-mono text-xs">{(tx.products as { sku?: string } | null)?.sku ?? "—"}</Td>
+                <Td>{(tx.warehouses as { name?: string } | null)?.name ?? "—"}</Td>
                 <Td>{humanizeStatus(tx.transaction_type)}</Td>
                 <Td className="text-right">{formatNumber(tx.quantity)}</Td>
               </tr>

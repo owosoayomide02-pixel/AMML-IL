@@ -3,9 +3,11 @@ import { ExportButtons } from "@/components/export/export-buttons";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Forbidden } from "@/components/ui/forbidden";
 import { PageHeader } from "@/components/ui/page-header";
+import { StockSheetTable } from "@/components/stock/stock-sheet-table";
 import { Table, TBody, Td, Th, THead } from "@/components/ui/table";
 import { getReportData } from "@/lib/queries";
 import { requirePageAccess } from "@/lib/session";
+import { STOCK_SHEET_LABELS, toStockSheetExport, toStockSheetRow } from "@/lib/stock-sheet";
 import { formatCurrency, formatNumber, toNumber } from "@/lib/utils";
 
 export default async function ReportsPage() {
@@ -13,6 +15,7 @@ export default async function ReportsPage() {
   if (!allowed) return <Forbidden />;
   const data = await getReportData(session.businessId);
   const currency = session.business.currency;
+  const sheet = data.inventory.map((row, index) => ({ key: row.id, ...toStockSheetRow(row, index) }));
   const salesTotal = data.sales.reduce((sum, sale) => sum + toNumber(sale.total), 0);
   const purchaseTotal = data.purchases.reduce((sum, purchase) => sum + toNumber(purchase.total), 0);
   const stockValue = data.inventory.reduce(
@@ -26,16 +29,7 @@ export default async function ReportsPage() {
         title="Reports"
         description="Last 90 days of sales, purchases, and stock value."
         actions={
-          <ExportButtons
-            filename="inventory-report"
-            rows={data.inventory.map((row) => ({
-              Product: row.products?.name,
-              SKU: row.products?.sku,
-              Warehouse: row.warehouses?.name,
-              OnHand: row.quantity_on_hand,
-              Value: toNumber(row.quantity_on_hand) * toNumber(row.products?.cost_price),
-            }))}
-          />
+          <ExportButtons filename="aaml-inventory-report" rows={sheet.map(toStockSheetExport)} />
         }
       />
       <div className="grid gap-4 md:grid-cols-3">
@@ -53,7 +47,7 @@ export default async function ReportsPage() {
         </Card>
         <Card>
           <CardContent className="pt-5">
-            <p className="text-sm text-slate-500">Current stock value</p>
+            <p className="text-sm text-slate-500">TOTAL INVENTORY PRICE</p>
             <p className="mt-1 text-2xl font-semibold">{formatCurrency(stockValue, currency)}</p>
           </CardContent>
         </Card>
@@ -61,13 +55,26 @@ export default async function ReportsPage() {
       <DemandForecast />
       <Card>
         <CardHeader>
-          <CardTitle>Top products by revenue</CardTitle>
+          <CardTitle>Stock register</CardTitle>
+        </CardHeader>
+        {sheet.length === 0 ? (
+          <CardContent>
+            <p className="text-sm text-slate-500">No stock records in this period.</p>
+          </CardContent>
+        ) : (
+          <StockSheetTable rows={sheet} currency={currency} />
+        )}
+      </Card>
+      <Card>
+        <CardHeader>
+          <CardTitle>Top spares by revenue</CardTitle>
         </CardHeader>
         <Table>
           <THead>
             <tr>
-              <Th>Product</Th>
-              <Th>SKU</Th>
+              <Th>{STOCK_SHEET_LABELS.make}</Th>
+              <Th>{STOCK_SHEET_LABELS.description}</Th>
+              <Th>{STOCK_SHEET_LABELS.partNumber}</Th>
               <Th className="text-right">Qty sold</Th>
               <Th className="text-right">Revenue</Th>
             </tr>
@@ -75,13 +82,14 @@ export default async function ReportsPage() {
           <TBody>
             {data.topProducts.length === 0 ? (
               <tr>
-                <Td colSpan={4} className="text-slate-500">
+                <Td colSpan={5} className="text-slate-500">
                   No sales in this period.
                 </Td>
               </tr>
             ) : (
               data.topProducts.map((product) => (
                 <tr key={product.sku || product.name}>
+                  <Td className="whitespace-nowrap uppercase">{product.brand || "—"}</Td>
                   <Td>{product.name}</Td>
                   <Td className="font-mono text-xs">{product.sku}</Td>
                   <Td className="text-right">{formatNumber(product.qty)}</Td>

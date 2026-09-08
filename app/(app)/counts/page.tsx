@@ -32,13 +32,13 @@ export default async function CountsPage() {
       ) : null}
       <Card>
         {counts.length === 0 ? (
-          <EmptyState title="No counts" description="Start a physical count to correct warehouse quantities." />
+          <EmptyState title="No counts" description="Start a physical count to correct LOCATION stock levels." />
         ) : (
           <Table>
             <THead>
               <tr>
                 <Th>Number</Th>
-                <Th>Warehouse</Th>
+                <Th>LOCATION</Th>
                 <Th>Date</Th>
                 <Th>Status</Th>
               </tr>

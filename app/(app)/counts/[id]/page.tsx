@@ -23,14 +23,14 @@ export default async function CountDetailPage({ params }: { params: Promise<{ id
     counted_quantity: number | null;
     variance: number | null;
     reason: string | null;
-    products: { name: string; sku: string; unit: string } | null;
+    products: { name: string; sku: string; brand?: string | null; unit: string } | null;
   }>;
 
   return (
     <div>
       <PageHeader
         title={count.count_number}
-        description={`${(count.warehouses as { name?: string } | null)?.name ?? "Warehouse"} · ${formatDate(count.count_date)}`}
+        description={`${(count.warehouses as { name?: string } | null)?.name ?? "LOCATION"} · ${formatDate(count.count_date)}`}
         actions={<Badge variant={statusVariant(count.status)}>{humanizeStatus(count.status)}</Badge>}
       />
       <Card>
