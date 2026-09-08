@@ -10,7 +10,8 @@ import { Table, TBody, Td, Th, THead } from "@/components/ui/table";
 import { listInventory } from "@/lib/queries";
 import { requirePageAccess } from "@/lib/session";
 import { statusVariant } from "@/lib/status";
-import { formatCurrency, formatNumber, stockStatus, stockStatusLabel, toNumber } from "@/lib/utils";
+import { toStockSheetRow } from "@/lib/stock-sheet";
+import { formatCurrency, formatNumber } from "@/lib/utils";
 import Link from "next/link";
 
 export default async function InventoryPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
@@ -20,25 +21,33 @@ export default async function InventoryPage({ searchParams }: { searchParams: Pr
 
   const rows = await listInventory(session.businessId, q);
   const currency = session.business.currency;
+  const sheet = rows.map((row, index) => ({ key: row.id, ...toStockSheetRow(row, index) }));
 
   return (
     <div className="space-y-6">
       <PageHeader
         title="Stock overview"
-        description="On-hand quantities across every warehouse."
+        description="Spares register: make, part number, location, rack, and stock status."
         actions={
           <>
-            <SearchField placeholder="Search product or warehouse" />
+            <SearchField placeholder="Search make, part number, or location" />
             <ExportButtons
-              filename="inventory"
-              rows={rows.map((row) => ({
-                Product: row.products?.name,
-                SKU: row.products?.sku,
-                Warehouse: row.warehouses?.name,
-                OnHand: row.quantity_on_hand,
-                Reserved: row.quantity_reserved,
-                Available: row.quantity_available,
-                Value: toNumber(row.quantity_on_hand) * toNumber(row.products?.cost_price),
+              filename="aaml-inventory"
+              rows={sheet.map((row) => ({
+                "Item ID": row.itemId,
+                MAKE: row.make,
+                "SPARES DESCRIPTION": row.description,
+                "PART NUMBER": row.partNumber,
+                "UNIT PRICE": row.unitPrice,
+                CONDITION: row.condition,
+                LOCATION: row.location,
+                "RACK NUMBER": row.rackNumber === "—" ? "" : row.rackNumber,
+                "STOCK LEVEL": row.stockLevel,
+                "RE-ORDER LEVEL": row.reorderLevel,
+                "TOTAL INVENTORY PRICE": row.totalPrice,
+                "STOCK STATUS": row.stockStatusLabel,
+                REMARKS: row.remarks,
+                "ORDER STATUS": row.orderStatus === "—" ? "" : row.orderStatus,
               }))}
             />
           </>
@@ -46,7 +55,7 @@ export default async function InventoryPage({ searchParams }: { searchParams: Pr
       />
       <ReorderAdvice />
       <Card>
-        {rows.length === 0 ? (
+        {sheet.length === 0 ? (
           <EmptyState
             title="No stock records"
             description="Receive a purchase or record a stock-in movement to populate this view."
@@ -57,40 +66,51 @@ export default async function InventoryPage({ searchParams }: { searchParams: Pr
           <Table>
             <THead>
               <tr>
-                <Th>Product</Th>
-                <Th>Warehouse</Th>
-                <Th className="text-right">On hand</Th>
-                <Th className="text-right">Reserved</Th>
-                <Th className="text-right">Available</Th>
-                <Th className="text-right">Value</Th>
-                <Th>Status</Th>
+                <Th className="whitespace-nowrap">Item ID</Th>
+                <Th className="whitespace-nowrap">Make</Th>
+                <Th>Spares description</Th>
+                <Th className="whitespace-nowrap">Part number</Th>
+                <Th className="whitespace-nowrap text-right">Unit price</Th>
+                <Th className="whitespace-nowrap">Condition</Th>
+                <Th className="whitespace-nowrap">Location</Th>
+                <Th className="whitespace-nowrap">Rack number</Th>
+                <Th className="whitespace-nowrap text-right">Stock level</Th>
+                <Th className="whitespace-nowrap text-right">Re-order level</Th>
+                <Th className="whitespace-nowrap text-right">Total inventory price</Th>
+                <Th className="whitespace-nowrap">Stock status</Th>
+                <Th className="whitespace-nowrap">Remarks</Th>
+                <Th className="whitespace-nowrap">Order status</Th>
               </tr>
             </THead>
             <TBody>
-              {rows.map((row) => {
-                const available = toNumber(row.quantity_available);
-                const stock = stockStatus(available, toNumber(row.products?.minimum_stock_level));
-                return (
-                  <tr key={row.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                    <Td>
-                      <Link href={`/products/${row.product_id}`} className="font-medium text-brand-600 hover:underline">
-                        {row.products?.name ?? "Product"}
+              {sheet.map((row) => (
+                <tr key={row.key} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                  <Td className="whitespace-nowrap font-mono text-xs">{row.itemId}</Td>
+                  <Td className="whitespace-nowrap font-medium uppercase">{row.make}</Td>
+                  <Td className="min-w-[16rem]">
+                    {row.productId ? (
+                      <Link href={`/products/${row.productId}`} className="font-medium text-brand-600 hover:underline">
+                        {row.description}
                       </Link>
-                      <p className="font-mono text-xs text-slate-500">{row.products?.sku}</p>
-                    </Td>
-                    <Td>{row.warehouses?.name ?? "—"}</Td>
-                    <Td className="text-right">{formatNumber(row.quantity_on_hand)}</Td>
-                    <Td className="text-right">{formatNumber(row.quantity_reserved)}</Td>
-                    <Td className="text-right">{formatNumber(available)}</Td>
-                    <Td className="text-right">
-                      {formatCurrency(toNumber(row.quantity_on_hand) * toNumber(row.products?.cost_price), currency)}
-                    </Td>
-                    <Td>
-                      <Badge variant={statusVariant(stock)}>{stockStatusLabel(stock)}</Badge>
-                    </Td>
-                  </tr>
-                );
-              })}
+                    ) : (
+                      row.description
+                    )}
+                  </Td>
+                  <Td className="whitespace-nowrap font-mono text-xs">{row.partNumber}</Td>
+                  <Td className="whitespace-nowrap text-right">{formatCurrency(row.unitPrice, currency)}</Td>
+                  <Td className="whitespace-nowrap uppercase">{row.condition}</Td>
+                  <Td className="whitespace-nowrap uppercase">{row.location}</Td>
+                  <Td className="whitespace-nowrap">{row.rackNumber}</Td>
+                  <Td className="whitespace-nowrap text-right">{formatNumber(row.stockLevel)}</Td>
+                  <Td className="whitespace-nowrap text-right">{formatNumber(row.reorderLevel)}</Td>
+                  <Td className="whitespace-nowrap text-right">{formatCurrency(row.totalPrice, currency)}</Td>
+                  <Td className="whitespace-nowrap">
+                    <Badge variant={statusVariant(row.stockStatus)}>{row.stockStatusLabel}</Badge>
+                  </Td>
+                  <Td className="min-w-[9rem]">{row.remarks}</Td>
+                  <Td className="whitespace-nowrap">{row.orderStatus}</Td>
+                </tr>
+              ))}
             </TBody>
           </Table>
         )}

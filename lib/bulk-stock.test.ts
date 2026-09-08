@@ -2,6 +2,23 @@ import { describe, expect, it } from "vitest";
 import { guessCategory, parseBulkStockText } from "@/lib/bulk-stock";
 
 describe("parseBulkStockText", () => {
+  it("maps AAML inventory spreadsheet headers", () => {
+    const items = parseBulkStockText(
+      [
+        "Item ID,MAKE,SPARES DESCRIPTION,PART NUMBER,UNIT PRICE,CONDITION,LOCATION,RACK NUMBER,STOCK LEVEL,RE-ORDER LEVEL",
+        "1,SIEMENS,Pressure Sensor,1089-9625-12,25000,NEW,ABUJA,,4,2",
+      ].join("\n"),
+    );
+    expect(items[0]).toMatchObject({
+      name: "Pressure Sensor",
+      sku: "1089-9625-12",
+      brand: "SIEMENS",
+      quantity: 4,
+      costPrice: 25000,
+      minimumStockLevel: 2,
+    });
+  });
+
   it("maps a header CSV by column name", () => {
     const items = parseBulkStockText(
       ["Name,SKU,Quantity,Cost,Selling,Category,Brand", "Siemens 24V relay,REL-24,50,8000,12000,Switchgear,Siemens"].join("\n"),

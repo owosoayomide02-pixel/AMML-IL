@@ -151,6 +151,33 @@ export async function updateWarehouseAction(id: string, input: unknown): Promise
   }
 }
 
+async function nextItemCode(businessId: string) {
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("products").select("item_code").eq("business_id", businessId);
+  if (error) return "1";
+  const max = (data ?? []).reduce((highest, row) => {
+    const value = Number.parseInt(String(row.item_code ?? ""), 10);
+    return Number.isFinite(value) ? Math.max(highest, value) : highest;
+  }, 0);
+  return String(max + 1);
+}
+
+function productSheetFields(data: {
+  itemCode?: string;
+  condition?: string;
+  rackNumber?: string;
+  remarks?: string;
+  orderStatus?: string;
+}) {
+  return {
+    item_code: data.itemCode?.trim() || null,
+    condition: data.condition?.trim() || "NEW",
+    rack_number: data.rackNumber?.trim() || null,
+    remarks: data.remarks?.trim() || null,
+    order_status: data.orderStatus?.trim() || null,
+  };
+}
+
 async function nextSku(businessId: string, name: string) {
   const supabase = await createClient();
   const { count } = await supabase
@@ -166,9 +193,8 @@ export async function createProductAction(input: unknown): Promise<ActionResult<
     const session = await requirePermission("products.write");
     const supabase = await createClient();
     const sku = data.sku?.trim() || (await nextSku(session.businessId, data.name));
-    const { data: row, error } = await supabase
-      .from("products")
-      .insert({
+    const itemCode = data.itemCode?.trim() || (await nextItemCode(session.businessId));
+    const payload = {
         business_id: session.businessId,
         category_id: data.categoryId || null,
         sku,
@@ -183,9 +209,15 @@ export async function createProductAction(input: unknown): Promise<ActionResult<
         minimum_stock_level: data.minimumStockLevel,
         reorder_quantity: data.reorderQuantity,
         image_url: data.imageUrl || null,
-      })
-      .select("id")
-      .single();
+        ...productSheetFields({ ...data, itemCode }),
+      };
+    let { data: row, error } = await supabase.from("products").insert(payload).select("id").single();
+    if (error && /item_code|rack_number|order_status|schema cache/i.test(error.message)) {
+      const { item_code: _item, condition: _condition, rack_number: _rack, remarks: _remarks, order_status: _order, ...base } = payload;
+      const retry = await supabase.from("products").insert(base).select("id").single();
+      row = retry.data;
+      error = retry.error;
+    }
     if (error || !row) {
       return fail(mapDbError(error?.message ?? "") ?? "Unable to create product.");
     }
@@ -206,6 +238,7 @@ export async function createProductAction(input: unknown): Promise<ActionResult<
     });
     await syncStockAlerts(session.businessId);
     revalidatePath("/products");
+    revalidatePath("/inventory");
     revalidatePath("/alerts");
     revalidatePath("/dashboard");
     return ok(row.id);
@@ -227,9 +260,7 @@ export async function updateProductAction(id: string, input: unknown): Promise<A
       .eq("business_id", session.businessId)
       .single();
     const sku = data.sku?.trim() || previous?.sku;
-    const { error } = await supabase
-      .from("products")
-      .update({
+    const updatePayload = {
         category_id: data.categoryId || null,
         sku,
         barcode: data.barcode || null,
@@ -243,9 +274,19 @@ export async function updateProductAction(id: string, input: unknown): Promise<A
         minimum_stock_level: data.minimumStockLevel,
         reorder_quantity: data.reorderQuantity,
         image_url: data.imageUrl || null,
-      })
+        ...productSheetFields(data),
+      };
+    let { error } = await supabase
+      .from("products")
+      .update(updatePayload)
       .eq("id", id)
       .eq("business_id", session.businessId);
+    if (error && /item_code|rack_number|order_status|schema cache/i.test(error.message)) {
+      const { item_code: _i, condition: _c, rack_number: _r, remarks: _m, order_status: _o, ...base } = updatePayload;
+      error = (
+        await supabase.from("products").update(base).eq("id", id).eq("business_id", session.businessId)
+      ).error;
+    }
     if (error) return fail(mapDbError(error.message) ?? "Unable to update product.");
     const costChanged = Number(previous?.cost_price) !== data.costPrice;
     const sellChanged = Number(previous?.selling_price) !== data.sellingPrice;
@@ -281,6 +322,7 @@ export async function updateProductAction(id: string, input: unknown): Promise<A
       newValues: data,
     });
     revalidatePath("/products");
+    revalidatePath("/inventory");
     revalidatePath(`/products/${id}`);
     return ok(id);
   } catch (error) {

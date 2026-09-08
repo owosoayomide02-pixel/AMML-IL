@@ -66,6 +66,11 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
                   minimumStockLevel: toNumber(product.minimum_stock_level),
                   reorderQuantity: toNumber(product.reorder_quantity),
                   imageUrl: product.image_url ?? "",
+                  itemCode: product.item_code ?? "",
+                  condition: product.condition ?? "NEW",
+                  rackNumber: product.rack_number ?? "",
+                  remarks: product.remarks ?? "",
+                  orderStatus: product.order_status ?? "",
                 }}
               />
             ) : (

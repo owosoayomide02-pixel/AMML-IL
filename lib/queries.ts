@@ -34,7 +34,11 @@ export async function listProducts(businessId: string, options?: { includeArchiv
     .eq("business_id", businessId)
     .order("name");
   if (!options?.includeArchived) query = query.eq("status", "active");
-  if (options?.q) query = query.or(`name.ilike.%${options.q}%,sku.ilike.%${options.q}%,barcode.ilike.%${options.q}%`);
+  if (options?.q) {
+    query = query.or(
+      `name.ilike.%${options.q}%,sku.ilike.%${options.q}%,barcode.ilike.%${options.q}%,brand.ilike.%${options.q}%`,
+    );
+  }
   const { data } = await query;
   return (data ?? []) as Array<
     Product & {
@@ -71,7 +75,7 @@ export async function listInventory(businessId: string, q?: string) {
   const supabase = await createClient();
   const { data } = await supabase
     .from("inventory")
-    .select("*, products(id, name, sku, unit, cost_price, selling_price, minimum_stock_level, reorder_quantity, status), warehouses(name, code)")
+    .select("*, products(*), warehouses(name, code)")
     .eq("business_id", businessId)
     .order("updated_at", { ascending: false });
   const rows = (data ?? []) as Array<{
@@ -86,6 +90,12 @@ export async function listInventory(businessId: string, q?: string) {
       id: string;
       name: string;
       sku: string;
+      brand: string | null;
+      item_code: string | null;
+      condition: string | null;
+      rack_number: string | null;
+      remarks: string | null;
+      order_status: string | null;
       unit: string;
       cost_price: number;
       selling_price: number;
@@ -95,12 +105,20 @@ export async function listInventory(businessId: string, q?: string) {
     } | null;
     warehouses: { name: string; code: string } | null;
   }>;
-  if (!q) return rows;
+  const sorted = [...rows].sort((a, b) => {
+    const aCode = Number.parseInt(a.products?.item_code ?? "", 10);
+    const bCode = Number.parseInt(b.products?.item_code ?? "", 10);
+    if (Number.isFinite(aCode) && Number.isFinite(bCode) && aCode !== bCode) return aCode - bCode;
+    return (a.products?.name ?? "").localeCompare(b.products?.name ?? "");
+  });
+  if (!q) return sorted;
   const term = q.toLowerCase();
-  return rows.filter(
+  return sorted.filter(
     (row) =>
       row.products?.name.toLowerCase().includes(term) ||
       row.products?.sku.toLowerCase().includes(term) ||
+      row.products?.brand?.toLowerCase().includes(term) ||
+      row.products?.item_code?.toLowerCase().includes(term) ||
       row.warehouses?.name.toLowerCase().includes(term),
   );
 }

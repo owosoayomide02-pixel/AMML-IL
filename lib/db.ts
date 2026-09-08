@@ -67,6 +67,9 @@ export async function upsertSetting(
 }
 
 export function mapDbError(message: string) {
+  if (/duplicate key/i.test(message) && /item_code/i.test(message)) {
+    return "A spare with this Item ID already exists.";
+  }
   if (/duplicate key/i.test(message) && /sku/i.test(message)) {
     return "A product with this SKU already exists.";
   }

@@ -40,6 +40,11 @@ export function ProductForm({
     minimumStockLevel: number;
     reorderQuantity: number;
     imageUrl: string;
+    itemCode: string;
+    condition: string;
+    rackNumber: string;
+    remarks: string;
+    orderStatus: string;
   }>;
   productId?: string;
 }) {
@@ -61,6 +66,11 @@ export function ProductForm({
       minimumStockLevel: defaultValues?.minimumStockLevel ?? 0,
       reorderQuantity: defaultValues?.reorderQuantity ?? 0,
       imageUrl: defaultValues?.imageUrl ?? "",
+      itemCode: defaultValues?.itemCode ?? "",
+      condition: defaultValues?.condition ?? "NEW",
+      rackNumber: defaultValues?.rackNumber ?? "",
+      remarks: defaultValues?.remarks ?? "",
+      orderStatus: defaultValues?.orderStatus ?? "",
     },
   });
 
@@ -83,12 +93,20 @@ export function ProductForm({
     >
       <FormGrid>
         <div className="md:col-span-2">
-          <Label>Product name</Label>
+          <Label>Spares description</Label>
           <Input {...form.register("name")} />
           <FieldError message={form.formState.errors.name?.message} />
         </div>
         <div>
-          <Label>SKU</Label>
+          <Label>Item ID</Label>
+          <Input {...form.register("itemCode")} placeholder="Leave blank to number automatically" />
+        </div>
+        <div>
+          <Label>Make</Label>
+          <Input {...form.register("brand")} placeholder="SIEMENS, PILZ, EATON..." />
+        </div>
+        <div>
+          <Label>Part number</Label>
           <Input {...form.register("sku")} placeholder="Leave blank to generate" />
         </div>
         <div>
@@ -124,8 +142,16 @@ export function ProductForm({
           <Input {...form.register("unit")} />
         </div>
         <div>
-          <Label>Brand</Label>
-          <Input {...form.register("brand")} />
+          <Label>Condition</Label>
+          <Select {...form.register("condition")}>
+            <option value="NEW">NEW</option>
+            <option value="USED">USED</option>
+            <option value="REFURBISHED">REFURBISHED</option>
+          </Select>
+        </div>
+        <div>
+          <Label>Rack number</Label>
+          <Input {...form.register("rackNumber")} />
         </div>
         <div>
           <Label>Manufacturer</Label>
@@ -133,7 +159,7 @@ export function ProductForm({
         </div>
         <div>
           <DualPriceInput
-            label="Cost price"
+            label="Unit price"
             name="costPrice"
             naira={Number(form.watch("costPrice") || 0)}
             onNairaChange={(value) => form.setValue("costPrice", value, { shouldValidate: true })}
@@ -151,15 +177,23 @@ export function ProductForm({
           />
         </div>
         <div>
-          <Label>Minimum stock level</Label>
+          <Label>Re-order level</Label>
           <Input type="number" step="0.01" {...form.register("minimumStockLevel")} />
         </div>
         <div>
           <Label>Reorder quantity</Label>
           <Input type="number" step="0.01" {...form.register("reorderQuantity")} />
         </div>
+        <div>
+          <Label>Order status</Label>
+          <Input {...form.register("orderStatus")} placeholder="Ordered, pending, on the way..." />
+        </div>
         <div className="md:col-span-2">
-          <Label>Description</Label>
+          <Label>Remarks</Label>
+          <Textarea {...form.register("remarks")} placeholder="Stock Good, Reorder needed, or a custom note" />
+        </div>
+        <div className="md:col-span-2">
+          <Label>Extra notes</Label>
           <Textarea {...form.register("description")} />
         </div>
       </FormGrid>

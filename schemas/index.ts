@@ -69,7 +69,7 @@ export const categorySchema = z.object({
 });
 
 export const productSchema = z.object({
-  name: z.string().min(2, "Enter a product name"),
+  name: z.string().min(2, "Enter a spare description"),
   sku: z.string().optional(),
   barcode: z.string().optional(),
   categoryId: z.string().uuid().optional().or(z.literal("")),
@@ -82,6 +82,11 @@ export const productSchema = z.object({
   minimumStockLevel: z.coerce.number().min(0),
   reorderQuantity: z.coerce.number().min(0),
   imageUrl: z.string().optional(),
+  itemCode: z.string().optional(),
+  condition: z.string().optional(),
+  rackNumber: z.string().optional(),
+  remarks: z.string().optional(),
+  orderStatus: z.string().optional(),
 });
 
 export const supplierSchema = z.object({

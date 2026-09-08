@@ -85,6 +85,11 @@ export interface Product {
   minimum_stock_level: number;
   reorder_quantity: number;
   image_url: string | null;
+  item_code: string | null;
+  condition: string;
+  rack_number: string | null;
+  remarks: string | null;
+  order_status: string | null;
   status: ProductStatus;
   created_at: string;
   updated_at: string;
