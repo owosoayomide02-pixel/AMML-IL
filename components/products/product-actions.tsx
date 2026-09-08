@@ -1,3 +1,5 @@
+"use client";
+
 import { deleteProductsAction, archiveProductAction, restoreProductAction } from "@/app/actions/catalog";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
