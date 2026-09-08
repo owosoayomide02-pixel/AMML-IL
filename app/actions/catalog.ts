@@ -1,5 +1,6 @@
 "use server";
 
+import { applyStock } from "@/app/actions/stock";
 import { fail, ok, type ActionResult } from "@/lib/action-result";
 import { syncStockAlerts } from "@/lib/alerts";
 import { writeAuditLog, mapDbError } from "@/lib/db";
@@ -7,6 +8,7 @@ import { getErrorMessage, logError } from "@/lib/errors";
 import { alertProductPriceChange } from "@/lib/price-alerts";
 import { getUsdNgnRate } from "@/lib/queries";
 import { requirePermission } from "@/lib/session";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { generateSku } from "@/lib/utils";
 import { categorySchema, productSchema, warehouseSchema } from "@/schemas";
@@ -221,6 +223,16 @@ export async function createProductAction(input: unknown): Promise<ActionResult<
     if (error || !row) {
       return fail(mapDbError(error?.message ?? "") ?? "Unable to create product.");
     }
+    if (data.warehouseId) {
+      await assignSpareLocation({
+        businessId: session.businessId,
+        userId: session.userId,
+        productId: row.id,
+        warehouseId: data.warehouseId,
+        quantity: data.openingQuantity ?? 0,
+        unitCost: data.costPrice,
+      });
+    }
     await recordPriceHistory(supabase, {
       businessId: session.businessId,
       productId: row.id,
@@ -288,6 +300,16 @@ export async function updateProductAction(id: string, input: unknown): Promise<A
       ).error;
     }
     if (error) return fail(mapDbError(error.message) ?? "Unable to update product.");
+    if (data.warehouseId) {
+      await assignSpareLocation({
+        businessId: session.businessId,
+        userId: session.userId,
+        productId: id,
+        warehouseId: data.warehouseId,
+        quantity: 0,
+        unitCost: data.costPrice,
+      });
+    }
     const costChanged = Number(previous?.cost_price) !== data.costPrice;
     const sellChanged = Number(previous?.selling_price) !== data.sellingPrice;
     if (costChanged || sellChanged) {
@@ -378,6 +400,111 @@ export async function restoreProductAction(id: string): Promise<ActionResult<str
   } catch (error) {
     logError("restore-product", error);
     return fail(getErrorMessage(error, "Unable to restore product."));
+  }
+}
+
+async function assignSpareLocation(input: {
+  businessId: string;
+  userId: string;
+  productId: string;
+  warehouseId: string;
+  quantity: number;
+  unitCost: number;
+}) {
+  const supabase = await createClient();
+  const { data: existing } = await supabase
+    .from("inventory")
+    .select("id")
+    .eq("business_id", input.businessId)
+    .eq("product_id", input.productId)
+    .eq("warehouse_id", input.warehouseId)
+    .maybeSingle();
+  if (input.quantity > 0) {
+    await applyStock({
+      businessId: input.businessId,
+      userId: input.userId,
+      productId: input.productId,
+      warehouseId: input.warehouseId,
+      type: "opening_stock",
+      quantity: input.quantity,
+      unitCost: input.unitCost,
+      reason: "Opening stock",
+    });
+    return;
+  }
+  if (existing) return;
+  const { error } = await supabase.from("inventory").insert({
+    business_id: input.businessId,
+    product_id: input.productId,
+    warehouse_id: input.warehouseId,
+    quantity_on_hand: 0,
+    quantity_reserved: 0,
+    quantity_available: 0,
+  });
+  if (error && !/duplicate|unique/i.test(error.message)) throw error;
+}
+
+function chunkIds(ids: string[]) {
+  const chunks: string[][] = [];
+  for (let index = 0; index < ids.length; index += 80) chunks.push(ids.slice(index, index + 80));
+  return chunks;
+}
+
+async function removeSpareRecords(businessId: string, ids: string[]) {
+  const admin = createAdminClient();
+  for (const batch of chunkIds(ids)) {
+    await admin.from("inventory").delete().eq("business_id", businessId).in("product_id", batch);
+    await admin.from("stock_transactions").delete().eq("business_id", businessId).in("product_id", batch);
+    await admin.from("product_price_history").delete().eq("business_id", businessId).in("product_id", batch);
+    await admin.from("alerts").update({ related_product_id: null }).eq("business_id", businessId).in("related_product_id", batch);
+    await admin.from("stock_transfer_items").delete().in("product_id", batch);
+    await admin.from("inventory_count_items").delete().in("product_id", batch);
+    await admin.from("sale_items").delete().in("product_id", batch);
+    await admin.from("purchase_items").delete().in("product_id", batch);
+    const { error } = await admin.from("products").delete().eq("business_id", businessId).in("id", batch);
+    if (error) throw error;
+  }
+}
+
+export async function deleteProductsAction(input: { ids?: string[]; all?: boolean }): Promise<ActionResult<{ deleted: number }>> {
+  try {
+    const session = await requirePermission("products.write");
+    const supabase = await createClient();
+    let ids = [...new Set((input.ids ?? []).filter(Boolean))];
+    if (input.all) {
+      const { data, error } = await supabase.from("products").select("id").eq("business_id", session.businessId);
+      if (error) throw error;
+      ids = (data ?? []).map((row) => row.id);
+    } else if (ids.length > 0) {
+      const { data, error } = await supabase
+        .from("products")
+        .select("id")
+        .eq("business_id", session.businessId)
+        .in("id", ids);
+      if (error) throw error;
+      ids = (data ?? []).map((row) => row.id);
+    }
+    if (ids.length === 0) return fail("Select at least one spare to delete.");
+    await removeSpareRecords(session.businessId, ids);
+    await writeAuditLog(supabase, {
+      businessId: session.businessId,
+      userId: session.userId,
+      action: input.all ? "products_deleted_all" : "products_deleted",
+      entityType: "product",
+      newValues: { count: ids.length },
+    });
+    await syncStockAlerts(session.businessId);
+    revalidatePath("/products");
+    revalidatePath("/inventory");
+    revalidatePath("/alerts");
+    revalidatePath("/dashboard");
+    revalidatePath("/reports");
+    revalidatePath("/sales");
+    revalidatePath("/purchases");
+    return ok({ deleted: ids.length });
+  } catch (error) {
+    logError("delete-products", error);
+    return fail(getErrorMessage(error, "Unable to delete spare."));
   }
 }
 

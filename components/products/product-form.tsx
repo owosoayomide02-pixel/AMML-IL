@@ -21,11 +21,13 @@ import { toast } from "sonner";
 
 export function ProductForm({
   categories,
+  warehouses,
   defaultValues,
   productId,
   usdNgnRate = DEFAULT_USD_NGN_RATE,
 }: {
   categories: Array<{ id: string; name: string }>;
+  warehouses?: Array<{ id: string; name: string }>;
   usdNgnRate?: number;
   defaultValues?: Partial<{
     name: string;
@@ -43,6 +45,8 @@ export function ProductForm({
     imageUrl: string;
     itemCode: string;
     condition: string;
+    warehouseId: string;
+    openingQuantity: number;
     rackNumber: string;
     remarks: string;
     orderStatus: string;
@@ -69,6 +73,8 @@ export function ProductForm({
       imageUrl: defaultValues?.imageUrl ?? "",
       itemCode: defaultValues?.itemCode ?? "",
       condition: defaultValues?.condition ?? "NEW",
+      warehouseId: defaultValues?.warehouseId ?? warehouses?.[0]?.id ?? "",
+      openingQuantity: defaultValues?.openingQuantity ?? 0,
       rackNumber: defaultValues?.rackNumber ?? "",
       remarks: defaultValues?.remarks ?? "",
       orderStatus: defaultValues?.orderStatus ?? "",
@@ -93,10 +99,31 @@ export function ProductForm({
       })}
     >
       <FormGrid>
-        <div className="md:col-span-2">
-          <Label>{STOCK_SHEET_LABELS.description}</Label>
-          <Input {...form.register("name")} />
-          <FieldError message={form.formState.errors.name?.message} />
+        <div className="md:col-span-2 grid gap-3 md:grid-cols-[minmax(0,1fr)_8rem_10rem]">
+          <div>
+            <Label>{STOCK_SHEET_LABELS.description}</Label>
+            <Textarea rows={3} {...form.register("name")} />
+            <FieldError message={form.formState.errors.name?.message} />
+          </div>
+          <div>
+            <Label>{STOCK_SHEET_LABELS.condition}</Label>
+            <Select {...form.register("condition")}>
+              <option value="NEW">NEW</option>
+              <option value="USED">USED</option>
+              <option value="REFURBISHED">REFURBISHED</option>
+            </Select>
+          </div>
+          <div>
+            <Label>{STOCK_SHEET_LABELS.location}</Label>
+            <Select {...form.register("warehouseId")}>
+              <option value="">Select location</option>
+              {(warehouses ?? []).map((warehouse) => (
+                <option key={warehouse.id} value={warehouse.id}>
+                  {warehouse.name}
+                </option>
+              ))}
+            </Select>
+          </div>
         </div>
         <div>
           <Label>{STOCK_SHEET_LABELS.itemId}</Label>
@@ -142,14 +169,12 @@ export function ProductForm({
           <Label>Unit</Label>
           <Input {...form.register("unit")} />
         </div>
-        <div>
-          <Label>{STOCK_SHEET_LABELS.condition}</Label>
-          <Select {...form.register("condition")}>
-            <option value="NEW">NEW</option>
-            <option value="USED">USED</option>
-            <option value="REFURBISHED">REFURBISHED</option>
-          </Select>
-        </div>
+        {!productId ? (
+          <div>
+            <Label>{STOCK_SHEET_LABELS.stockLevel}</Label>
+            <Input type="number" step="0.01" {...form.register("openingQuantity")} />
+          </div>
+        ) : null}
         <div>
           <Label>{STOCK_SHEET_LABELS.rackNumber}</Label>
           <Input {...form.register("rackNumber")} />

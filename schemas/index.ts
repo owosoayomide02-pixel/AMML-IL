@@ -84,6 +84,8 @@ export const productSchema = z.object({
   imageUrl: z.string().optional(),
   itemCode: z.string().optional(),
   condition: z.string().optional(),
+  warehouseId: z.string().uuid().optional().or(z.literal("")),
+  openingQuantity: z.coerce.number().min(0).optional(),
   rackNumber: z.string().optional(),
   remarks: z.string().optional(),
   orderStatus: z.string().optional(),

@@ -57,7 +57,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
             actionLabel={canWrite ? "Add spare" : undefined}
           />
         ) : (
-          <StockSheetTable rows={sheet} currency={session.business.currency} />
+          <StockSheetTable rows={sheet} currency={session.business.currency} canDelete={canWrite} />
         )}
       </Card>
     </div>

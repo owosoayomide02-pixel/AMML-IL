@@ -8,7 +8,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { Table, TBody, Td, Th, THead } from "@/components/ui/table";
 import { can } from "@/lib/permissions";
 import { formatNgnUsd } from "@/lib/money";
-import { getProduct, getUsdNgnRate, listCategories } from "@/lib/queries";
+import { getProduct, getUsdNgnRate, listCategories, listWarehouses } from "@/lib/queries";
 import { requirePageAccess } from "@/lib/session";
 import { STOCK_SHEET_LABELS } from "@/lib/stock-sheet";
 import { humanizeStatus, statusVariant } from "@/lib/status";
@@ -20,9 +20,10 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
   const { session, allowed } = await requirePageAccess("products.read");
   if (!allowed) return <Forbidden />;
 
-  const [product, categories, usdNgnRate] = await Promise.all([
+  const [product, categories, warehouses, usdNgnRate] = await Promise.all([
     getProduct(session.businessId, id),
     listCategories(session.businessId),
+    listWarehouses(session.businessId),
     getUsdNgnRate(session.businessId),
   ]);
   if (!product) notFound();
@@ -52,6 +53,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
               <ProductForm
                 productId={product.id}
                 categories={categories}
+                warehouses={warehouses.map((row) => ({ id: row.id, name: row.name }))}
                 usdNgnRate={usdNgnRate}
                 defaultValues={{
                   name: product.name,
@@ -69,6 +71,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
                   imageUrl: product.image_url ?? "",
                   itemCode: product.item_code ?? "",
                   condition: product.condition ?? "NEW",
+                  warehouseId: product.inventory[0]?.warehouse_id ?? "",
                   rackNumber: product.rack_number ?? "",
                   remarks: product.remarks ?? "",
                   orderStatus: product.order_status ?? "",
@@ -86,7 +89,17 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
                 </div>
                 <div>
                   <dt className="text-slate-500">{STOCK_SHEET_LABELS.description}</dt>
-                  <dd>{product.name}</dd>
+                  <dd className="whitespace-pre-wrap">{product.name}</dd>
+                </div>
+                <div>
+                  <dt className="text-slate-500">{STOCK_SHEET_LABELS.condition}</dt>
+                  <dd>{product.condition || "NEW"}</dd>
+                </div>
+                <div>
+                  <dt className="text-slate-500">{STOCK_SHEET_LABELS.location}</dt>
+                  <dd>
+                    {product.inventory.map((row) => row.warehouses?.name).filter(Boolean).join(", ") || "—"}
+                  </dd>
                 </div>
                 <div>
                   <dt className="text-slate-500">{STOCK_SHEET_LABELS.partNumber}</dt>
@@ -95,10 +108,6 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
                 <div>
                   <dt className="text-slate-500">{STOCK_SHEET_LABELS.unitPrice}</dt>
                   <dd>{formatNgnUsd(product.cost_price, usdNgnRate)}</dd>
-                </div>
-                <div>
-                  <dt className="text-slate-500">{STOCK_SHEET_LABELS.condition}</dt>
-                  <dd>{product.condition || "NEW"}</dd>
                 </div>
                 <div>
                   <dt className="text-slate-500">{STOCK_SHEET_LABELS.rackNumber}</dt>
